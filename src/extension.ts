@@ -13,6 +13,7 @@ export function activate(context: ExtensionContext): void {
     output,
     app,
     window.registerWebviewViewProvider("agtc.sessions", app.panel, { webviewOptions: { retainContextWhenHidden: true } }),
+    window.registerWebviewPanelSerializer("agtc.home", { deserializeWebviewPanel: async (panel) => app.home.adopt(panel) }),
     commands.registerCommand("agtc.refresh", () => app.refresh()),
     commands.registerCommand("agtc.toggleInactive", () => app.toggleInactive()),
     commands.registerCommand("agtc.jump", (id?: string) => {

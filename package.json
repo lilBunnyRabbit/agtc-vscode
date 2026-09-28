@@ -274,6 +274,11 @@
           "type": "string",
           "default": ".claude/worktrees",
           "description": "Where new worktrees go, relative to the repository unless absolute."
+        },
+        "agtc.showOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the home page when a window starts."
         }
       }
     }

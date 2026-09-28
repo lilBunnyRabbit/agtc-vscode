@@ -6,7 +6,7 @@ import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
 import { collectSessions } from "./model/sessions";
 import { StateStore } from "./model/state-store";
 import { STATE_FILE } from "./paths";
-import { actionTable, buildDetail, buildGroups } from "./views/model";
+import { actionTable, buildDetail, buildGroups, buildStats, needsYou } from "./views/model";
 import { HomePanel } from "./views/home";
 import { SessionsPanel } from "./views/panel";
 import { type Remembered, WindowMemory } from "./spawn/memory";
@@ -51,7 +51,10 @@ export class App {
       }
     });
     this.status.command = "agtc.jumpWaiting";
-    this.panel.onDidChangeVisibility(() => this.schedule());
+    this.panel.onDidChangeVisibility((visible) => {
+      this.schedule();
+      if (visible && this.home.visible === false) this.home.show(true);
+    });
     this.panel.onMessage((message) => {
       switch (message.type) {
         case "select":
@@ -75,8 +78,11 @@ export class App {
 
   private async start(): Promise<void> {
     await this.refresh();
+    const config = workspace.getConfiguration("agtc");
+    const afterSwap = await this.memory.afterSwap();
+    if (!afterSwap && config.get<boolean>("showOnStartup", true)) this.home.show(true);
     const remembered = await this.memory.take(currentFolder());
-    if (remembered.length && workspace.getConfiguration("agtc").get<boolean>("resumeOnStartup", true)) {
+    if (remembered.length && config.get<boolean>("resumeOnStartup", true)) {
       const opened = await restoreSessions(remembered, this.list);
       if (opened) {
         window.setStatusBarMessage(`agtc: resumed ${opened} ${opened === 1 ? "agent" : "agents"}`, 5 * SECOND);
@@ -150,7 +156,7 @@ export class App {
       showInactive: this.showInactive,
       actions,
     });
-    this.home.set({ groups: buildGroups(this.list, true), checkouts: knownCheckouts(this.list), actions });
+    this.home.set({ needs: needsYou(this.list), stats: buildStats(this.list), checkouts: knownCheckouts(this.list), actions });
     this.showWaiting();
   }
 

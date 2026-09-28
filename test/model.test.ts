@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { actionsOf, buildDetail, buildGroups, digitsOf } from "../src/views/model";
+import { actionsOf, buildDetail, buildGroups, buildStats, digitsOf, needsYou } from "../src/views/model";
 import { session } from "./fixtures";
 
 const NOW = 10_000_000;
@@ -71,5 +71,31 @@ describe("actionsOf", () => {
     expect(actionsOf(session({ status: "busy", terminal: "t1", worktree: "x" }))).not.toContain("worktree");
     expect(actionsOf(session({ status: "inactive" }))).toContain("resume");
     expect(actionsOf(session({ status: "done", terminal: "t1" }))).toContain("markSeen");
+  });
+});
+
+describe("home", () => {
+  test("needs you: input before done, oldest first", () => {
+    const rows = needsYou([
+      session({ id: "d-new", status: "done", since: NOW - 1000 }),
+      session({ id: "i", status: "needs input", since: NOW - 500 }),
+      session({ id: "d-old", status: "done", since: NOW - 9000 }),
+      session({ id: "b", status: "busy" }),
+    ], NOW);
+    expect(rows.map((r) => r.id)).toEqual(["i", "d-old", "d-new"]);
+  });
+
+  test("stats count activity by tool and worktrees per repo", () => {
+    const day = 24 * 3_600_000;
+    const T = 100 * day;
+    const stats = buildStats([
+      session({ repo: "a", tool: "claude", status: "busy", since: T - 1000, worktree: "x", root: "/a/x" }),
+      session({ repo: "a", tool: "codex", status: "inactive", since: T - 3 * day }),
+      session({ repo: "b", tool: "claude", status: "inactive", since: T - 30 * day }),
+    ], T);
+    expect(stats.today).toEqual({ claude: 1, codex: 0 });
+    expect(stats.week).toEqual({ claude: 1, codex: 1 });
+    expect(stats.running).toBe(1);
+    expect(stats.repos.map((r) => [r.repo, r.worktrees, r.sessions])).toEqual([["a", 1, 2], ["b", 0, 1]]);
   });
 });

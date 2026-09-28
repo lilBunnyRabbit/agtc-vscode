@@ -9,6 +9,8 @@ export interface Remembered {
 }
 
 const KEY = "agtc.windows";
+const SWAP_KEY = "agtc.swappedAt";
+const SWAP_WINDOW_MS = 60_000;
 
 /**
  * What ran in this window, for resume after a restart. VS Code has no window id that survives a
@@ -38,8 +40,14 @@ export class WindowMemory {
     return this.memento.update(KEY, rest).then(() => sessions);
   }
 
+  /** A folder swap restarts the extension host; the flag tells the next activation it is not a window start. */
   move(from: string, to: string): Thenable<void> {
     const { [from]: sessions = [], ...rest } = this.all();
-    return this.memento.update(KEY, { ...rest, [to]: sessions });
+    return this.memento.update(SWAP_KEY, Date.now()).then(() => this.memento.update(KEY, { ...rest, [to]: sessions }));
+  }
+
+  afterSwap(): Thenable<boolean> {
+    const at = this.memento.get<number>(SWAP_KEY, 0);
+    return this.memento.update(SWAP_KEY, undefined).then(() => Date.now() - at < SWAP_WINDOW_MS);
   }
 }

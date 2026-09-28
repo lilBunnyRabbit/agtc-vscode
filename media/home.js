@@ -2,59 +2,54 @@
   const vscode = acquireVsCodeApi();
   const GLYPH = { claude: "✳", codex: "⬡" };
   const $ = (id) => document.getElementById(id);
-  let state = { groups: [], checkouts: [], actions: {} };
+  let state = { needs: [], stats: { today: {}, week: {}, running: 0, repos: [] }, checkouts: [], actions: {} };
   let tool = "claude";
 
   const esc = (text) => String(text ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-  function rowHtml(row) {
-    const wants = row.status === "needs input" || row.status === "done";
-    const classes = ["row", row.status.replace(" ", "-"), row.review ? "review" : "", wants ? "wants" : ""].filter(Boolean);
-    const title = row.review ? "╰ review" : row.title;
-    const glyphs = `<span class="glyph">${GLYPH[row.tool] || ""}${row.worktree ? " ⎇" : ""}</span>`;
-    const verdict = row.verdict ? `<span class="verdict ${row.verdict.ready ? "ready" : "notready"}">${row.verdict.ready ? "ready" : "not ready"}</span>` : "";
-    const meta = [
-      `<span class="pill">${esc(row.status)}</span>`,
-      verdict,
-      row.branch ? `<span class="branch">${esc(row.branch)}</span>` : "",
-      row.external ? `<span class="external" title="runs outside this window">⇗</span>` : "",
-    ].filter(Boolean);
-    const buttons = row.actions.map((a) => `<button data-command="${esc(state.actions[a].command)}">${esc(state.actions[a].label)}</button>`).join("");
-    return `<div class="${classes.join(" ")}" data-id="${esc(row.id)}" data-status="${esc(row.status)}" title="${esc(row.waitingFor ? `waiting for: ${row.waitingFor}` : row.title)}">
-      <span class="digit">${row.digit ?? ""}</span>
-      <span class="title">${glyphs}${esc(title)}</span>
-      <span class="age">${esc(row.age)}</span>
+  function needHtml(row) {
+    const buttons = row.actions
+      .filter((a) => a !== "new" && a !== "newWorktree" && a !== "copyResume")
+      .map((a) => `<button data-command="${esc(state.actions[a].command)}">${esc(state.actions[a].label)}</button>`)
+      .join("");
+    const meta = [`<span class="pill">${esc(row.status)}</span>`, row.branch ? `<span>⎇ ${esc(row.branch)}</span>` : "", row.external ? "<span>⇗ elsewhere</span>" : "", `<span>${esc(row.age)}</span>`].filter(Boolean);
+    return `<div class="need" data-id="${esc(row.id)}" data-status="${esc(row.status)}" title="${esc(row.waitingFor ? `waiting for: ${row.waitingFor}` : row.title)}">
+      <span class="title">${GLYPH[row.tool] || ""} ${esc(row.title)}</span>
       <span class="meta">${meta.join("")}</span>
       <span class="actions">${buttons}</span>
     </div>`;
   }
 
   function render() {
-    const rows = state.groups.flatMap((g) => g.rows);
-    const needs = rows.filter((r) => r.status === "needs input" || r.status === "done");
-    $("needs-list").innerHTML = needs.length ? needs.map(rowHtml).join("") : '<div class="empty">nothing waiting</div>';
-    const html = [];
-    for (const group of state.groups) {
-      html.push(`<div class="group">${esc(group.repo)}<span class="count">${esc(group.description)}</span></div>`);
-      for (const row of group.rows) html.push(rowHtml(row));
-    }
-    $("all-list").innerHTML = html.join("") || '<div class="empty">no sessions</div>';
+    const { needs, stats } = state;
+    $("needs-list").innerHTML = needs.length ? needs.map(needHtml).join("") : '<div class="empty">Nothing is waiting on you.</div>';
+    $("summary").textContent = `${stats.running} running · ${needs.length} waiting`;
+    const card = (big, small) => `<div class="stat"><div class="big">${big}</div><div class="small">${small}</div></div>`;
+    $("cards").innerHTML = [
+      card(stats.running, "running now"),
+      card((stats.today.claude || 0) + (stats.today.codex || 0), `active today · ✳ ${stats.today.claude || 0} ⬡ ${stats.today.codex || 0}`),
+      card((stats.week.claude || 0) + (stats.week.codex || 0), `active this week · ✳ ${stats.week.claude || 0} ⬡ ${stats.week.codex || 0}`),
+      card(stats.repos.reduce((n, r) => n + r.worktrees, 0), "worktrees in use"),
+    ].join("");
+    $("repos").innerHTML = stats.repos.length
+      ? `<tr><th>repo</th><th>running</th><th>waiting</th><th>worktrees</th><th>sessions</th></tr>` +
+        stats.repos
+          .map((r) => `<tr><td>${esc(r.repo)}</td><td class="num">${r.running}</td><td class="num${r.waiting ? " hot" : ""}">${r.waiting}</td><td class="num">${r.worktrees}</td><td class="num">${r.sessions}</td></tr>`)
+          .join("")
+      : "";
     const dir = $("dir");
     const current = dir.value;
     dir.innerHTML = state.checkouts.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
     if (current && state.checkouts.includes(current)) dir.value = current;
   }
 
-  for (const list of [$("needs-list"), $("all-list")]) {
-    list.addEventListener("click", (event) => {
-      const row = event.target.closest(".row");
-      if (!row) return;
-      const id = row.getAttribute("data-id");
-      const button = event.target.closest("button");
-      if (button) vscode.postMessage({ type: "command", command: button.getAttribute("data-command"), id });
-      else vscode.postMessage({ type: "command", command: "agtc.jump", id });
-    });
-  }
+  $("needs-list").addEventListener("click", (event) => {
+    const row = event.target.closest(".need");
+    if (!row) return;
+    const id = row.getAttribute("data-id");
+    const button = event.target.closest("button");
+    vscode.postMessage({ type: "command", command: button ? button.getAttribute("data-command") : "agtc.jump", id });
+  });
 
   $("tool").addEventListener("click", (event) => {
     const button = event.target.closest("button");
@@ -88,7 +83,7 @@
   }
 
   $("start").addEventListener("click", start);
-  $("task").addEventListener("keydown", (event) => {
+  document.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       start();
@@ -104,6 +99,8 @@
       const dir = $("dir");
       if (![...dir.options].some((o) => o.value === message.dir)) dir.add(new Option(message.dir, message.dir), 0);
       dir.value = message.dir;
+    } else if (message.type === "focus") {
+      $("task").focus();
     }
   });
 

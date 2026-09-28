@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { collapse, plural, tildify } from "../lib/text";
-import { relativeAge } from "../lib/time";
-import { type Session, type Status, workDir } from "../model/session";
+import { DAY, relativeAge } from "../lib/time";
+import { STATUS_PRIORITY, type Session, type Status, workDir } from "../model/session";
 import { HOME } from "../paths";
 
 export interface Row {
@@ -83,10 +83,55 @@ export interface ViewState {
   actions: Record<Action, { label: string; command: string }>;
 }
 
+export interface RepoStat {
+  repo: string;
+  sessions: number;
+  running: number;
+  waiting: number;
+  worktrees: number;
+}
+
+export interface Stats {
+  today: Record<Session["tool"], number>;
+  week: Record<Session["tool"], number>;
+  running: number;
+  repos: RepoStat[];
+}
+
 export interface HomeState {
-  groups: Group[];
+  needs: Row[];
+  stats: Stats;
   checkouts: string[];
   actions: ViewState["actions"];
+}
+
+/** Activity by last touch: a session counts for the day and week it was last active in. */
+export function buildStats(sessions: Session[], now = Date.now()): Stats {
+  const count = (sinceMs: number) => {
+    const active = sessions.filter((s) => Math.max(s.since, s.lastPromptAt ?? 0) >= now - sinceMs);
+    return { claude: active.filter((s) => s.tool === "claude").length, codex: active.filter((s) => s.tool === "codex").length };
+  };
+  const byRepo = new Map<string, Session[]>();
+  for (const s of sessions) byRepo.set(s.repo, [...(byRepo.get(s.repo) ?? []), s]);
+  const repos = [...byRepo]
+    .map(([repo, list]) => ({
+      repo,
+      sessions: list.length,
+      running: list.filter((s) => s.status !== "inactive").length,
+      waiting: list.filter((s) => s.status === "needs input" || s.status === "done").length,
+      worktrees: new Set(list.filter((s) => s.worktree).map((s) => s.root)).size,
+    }))
+    .sort((a, b) => b.running - a.running || b.sessions - a.sessions);
+  return { today: count(DAY), week: count(7 * DAY), running: sessions.filter((s) => s.status !== "inactive").length, repos };
+}
+
+/** Input before done, the longest waiting first. */
+export function needsYou(sessions: Session[], now = Date.now()): Row[] {
+  const digits = digitsOf(sessions);
+  return sessions
+    .filter((s) => s.status === "needs input" || s.status === "done")
+    .sort((a, b) => STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status] || a.since - b.since)
+    .map((s) => rowOf(s, sessions, digits.get(s.id), now));
 }
 
 export const actionTable = (): ViewState["actions"] =>

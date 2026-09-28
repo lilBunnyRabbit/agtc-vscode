@@ -19,16 +19,19 @@ export class HomePanel {
     return this.panel?.visible ?? false;
   }
 
-  show(): void {
-    if (this.panel) {
-      this.panel.reveal();
-      return;
-    }
-    const panel = window.createWebviewPanel("agtc.home", "agtc", ViewColumn.Active, {
-      enableScripts: true,
-      retainContextWhenHidden: true,
-      localResourceRoots: [Uri.joinPath(this.extensionUri, "media")],
-    });
+  show(preserveFocus = false): void {
+    if (this.panel) this.panel.reveal(undefined, preserveFocus);
+    else this.adopt(window.createWebviewPanel("agtc.home", "agtc", { viewColumn: ViewColumn.Active, preserveFocus }, this.options()));
+    if (!preserveFocus) void this.panel?.webview.postMessage({ type: "focus" });
+  }
+
+  private options() {
+    return { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [Uri.joinPath(this.extensionUri, "media")] };
+  }
+
+  /** Also VS Code's restored panel after an extension host restart, so the tab keeps its place. */
+  adopt(panel: WebviewPanel): void {
+    panel.webview.options = this.options();
     panel.iconPath = Uri.joinPath(this.extensionUri, "media", "icon.svg");
     panel.webview.html = this.html(panel.webview);
     panel.webview.onDidReceiveMessage((message: HomeMessage) => this.messages.fire(message));
@@ -66,16 +69,21 @@ export class HomePanel {
 <link rel="stylesheet" href="${asset("home.css")}">
 </head>
 <body class="home">
-<section id="composer">
-  <h2>New agent</h2>
-  <div class="field"><label>agent</label><div class="segment" id="tool"><button data-tool="claude" class="on">✳ claude</button><button data-tool="codex">⬡ codex</button></div></div>
-  <div class="field"><label>in</label><select id="dir"></select><button id="browse">browse…</button></div>
-  <div class="field"><label><input type="checkbox" id="wt"> new worktree</label><input id="branch" placeholder="branch" disabled></div>
-  <div class="field"><label>task</label><textarea id="task" rows="5" placeholder="optional, ⌘⏎ starts"></textarea></div>
-  <div class="field"><label></label><button id="start" class="primary">start</button><span id="note"></span></div>
+<header><span class="logo">✳</span><h1>Agent Traffic Control</h1><span id="summary"></span></header>
+<section id="composer" class="card">
+  <div class="toolbar">
+    <div class="segment" id="tool"><button data-tool="claude" class="on">✳ Claude</button><button data-tool="codex">⬡ Codex</button></div>
+    <span class="in">in</span>
+    <select id="dir"></select>
+    <button id="browse" class="ghost" title="pick a folder">…</button>
+    <label class="switch"><input type="checkbox" id="wt"> new worktree</label>
+    <input id="branch" placeholder="branch" disabled>
+  </div>
+  <textarea id="task" rows="4" placeholder="What should it do? Empty starts the agent with no task."></textarea>
+  <div class="toolbar end"><span id="note"></span><button id="start" class="primary">Start <kbd>⌘⏎</kbd></button></div>
 </section>
 <section id="needs"><h2>Needs you</h2><div id="needs-list"></div></section>
-<section id="all"><h2>Sessions</h2><div id="all-list"></div></section>
+<section id="stats"><h2>Activity</h2><div id="cards" class="cards"></div><table id="repos"></table></section>
 <script nonce="${nonce}" src="${asset("home.js")}"></script>
 </body>
 </html>`;
