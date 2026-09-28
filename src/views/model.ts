@@ -62,9 +62,25 @@ export const ACTION_COMMAND: Record<Action, string> = {
   markSeen: "agtc.markSeen",
 };
 
+export type ActionKind = "primary" | "review" | "good" | "danger" | "neutral" | "quiet";
+
+export const ACTION_KIND: Record<Action, ActionKind> = {
+  jump: "primary",
+  resume: "primary",
+  review: "review",
+  handBack: "good",
+  closeReviewer: "danger",
+  worktree: "neutral",
+  markSeen: "neutral",
+  new: "quiet",
+  newWorktree: "quiet",
+  copyResume: "quiet",
+  openFolder: "quiet",
+};
+
 export function actionsOf(session: Session): Action[] {
   const inactive = session.status === "inactive";
-  const actions: Action[] = ["jump"];
+  const actions: Action[] = inactive ? [] : ["jump"];
   if (session.reviewOf) {
     if (!inactive && session.status !== "busy") actions.push("handBack");
     if (!inactive && session.terminal) actions.push("closeReviewer");
@@ -94,6 +110,9 @@ export interface DetailItem {
 export interface Detail {
   id: string;
   title: string;
+  status: Status;
+  tool: Session["tool"];
+  age: string;
   items: DetailItem[];
 }
 
@@ -102,7 +121,7 @@ export interface ViewState {
   detail?: Detail;
   selectedId?: string;
   showInactive: boolean;
-  actions: Record<Action, { label: string; command: string }>;
+  actions: Record<Action, { label: string; command: string; kind: ActionKind }>;
 }
 
 export interface RepoStat {
@@ -165,7 +184,7 @@ export function checkoutsOf(dirs: string[], home: string): Checkout[] {
 }
 
 export const actionTable = (): ViewState["actions"] =>
-  Object.fromEntries((Object.keys(ACTION_LABEL) as Action[]).map((a) => [a, { label: ACTION_LABEL[a], command: ACTION_COMMAND[a] }])) as ViewState["actions"];
+  Object.fromEntries((Object.keys(ACTION_LABEL) as Action[]).map((a) => [a, { label: ACTION_LABEL[a], command: ACTION_COMMAND[a], kind: ACTION_KIND[a] }])) as ViewState["actions"];
 
 const MAX_DIGIT = 9;
 const PROMPT_WIDTH = 160;
@@ -256,7 +275,7 @@ export function buildDetail(session: Session, now = Date.now()): Detail {
       })),
     });
   }
-  return { id: session.id, title: session.title, items };
+  return { id: session.id, title: session.title, status: session.status, tool: session.tool, age: relativeAge(session.since, now), items };
 }
 
 function changesItem(session: Session, dir: string): DetailItem {

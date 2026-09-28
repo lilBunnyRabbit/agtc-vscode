@@ -77,8 +77,15 @@
       for (const child of item.children || []) items.push(itemHtml(child, true));
     }
     const row = state.groups.flatMap((g) => g.rows).find((r) => r.id === d.id);
-    const buttons = (row ? row.actions : []).map((a) => `<button data-command="${esc(state.actions[a].command)}">${esc(state.actions[a].label)}</button>`).join("");
-    detail.innerHTML = `<h3 title="${esc(d.title)}">${esc(d.title)}</h3><div class="actions">${buttons}</div>${items.join("")}`;
+    const actions = (row ? row.actions : []).map((a) => state.actions[a]);
+    const button = (a) => `<button class="${a.kind}" data-command="${esc(a.command)}">${esc(a.label)}</button>`;
+    const main = actions.filter((a) => a.kind !== "quiet").map(button).join("");
+    const quiet = actions.filter((a) => a.kind === "quiet").map(button).join("");
+    detail.dataset.status = d.status;
+    detail.innerHTML = `<header><h3>${esc(d.title)}</h3><div class="state"><span class="pill">${esc(d.status)}</span><span>${GLYPH[d.tool] || ""} ${esc(d.tool)}</span><span>${esc(d.age)}</span></div></header>
+      <div class="actions">${main}</div>
+      <div class="facts">${items.join("")}</div>
+      <div class="actions quiet">${quiet}</div>`;
   }
 
   function itemHtml(item, child) {

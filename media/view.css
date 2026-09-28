@@ -33,10 +33,10 @@ body {
 
 #detail {
   flex: 0 0 auto;
-  max-height: 42%;
+  max-height: 50%;
   overflow-y: auto;
   border-top: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-widget-border));
-  padding: 6px 10px 8px;
+  padding: 10px 12px 12px;
 }
 
 #detail:empty {
@@ -221,13 +221,54 @@ body {
   --status: var(--inactive);
 }
 
+#detail header {
+  margin-bottom: 8px;
+}
+
 #detail h3 {
-  margin: 0 0 6px;
-  font-size: 1em;
+  margin: 0 0 3px;
+  font-size: 1.05em;
   font-weight: 600;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+#detail .state {
+  display: flex;
+  gap: 10px;
+  font-size: 0.9em;
+  color: var(--dim);
+}
+
+#detail[data-status="needs input"] {
+  --status: var(--input);
+}
+#detail[data-status="done"] {
+  --status: var(--done);
+}
+#detail[data-status="busy"] {
+  --status: var(--busy);
+}
+#detail[data-status="idle"] {
+  --status: var(--idle);
+}
+#detail[data-status="inactive"] {
+  --status: var(--inactive);
+}
+
+#detail .facts {
+  margin: 8px 0;
+  padding: 6px 0;
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+}
+
+#detail .item.folder .label {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .item {
@@ -280,20 +321,65 @@ body {
 #detail .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin: 6px 0 2px;
+  gap: 5px;
 }
 
 #detail .actions button {
+  --tone: var(--vscode-foreground);
   font: inherit;
-  font-size: 0.9em;
-  color: var(--vscode-button-secondaryForeground);
-  background: var(--vscode-button-secondaryBackground);
-  border: none;
-  border-radius: 2px;
+  font-size: 0.92em;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 3px;
   cursor: pointer;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
 }
 
 #detail .actions button:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
+  background: color-mix(in srgb, var(--tone) 26%, transparent);
+}
+
+#detail .actions button.primary {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  border-color: transparent;
+}
+
+#detail .actions button.primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+#detail .actions button.review {
+  --tone: var(--vscode-charts-purple);
+}
+
+#detail .actions button.good {
+  --tone: var(--vscode-charts-green);
+}
+
+#detail .actions button.danger {
+  --tone: var(--vscode-charts-red);
+}
+
+#detail .actions button.neutral {
+  --tone: var(--vscode-charts-blue);
+}
+
+#detail .actions.quiet {
+  gap: 2px 12px;
+}
+
+#detail .actions.quiet button {
+  padding: 0;
+  border: none;
+  background: none;
+  font-weight: 400;
+  color: var(--vscode-textLink-foreground);
+}
+
+#detail .actions.quiet button:hover {
+  background: none;
+  text-decoration: underline;
 }
