@@ -3,6 +3,13 @@
   "configurations": [
     {
       "name": "Run Extension",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "bun run dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug Extension (needs the inspector reachable on localhost)",
       "type": "extensionHost",
       "request": "launch",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}"],

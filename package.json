@@ -190,14 +190,6 @@
         {
           "command": "agtc.jump",
           "when": "false"
-        },
-        {
-          "command": "agtc.jumpDigit",
-          "when": "false"
-        },
-        {
-          "command": "agtc.openDiff",
-          "when": "false"
         }
       ]
     },
