@@ -2,28 +2,41 @@
   const vscode = acquireVsCodeApi();
   const GLYPH = { claude: "✳", codex: "⬡" };
   const $ = (id) => document.getElementById(id);
-  let state = { needs: [], stats: { today: {}, week: {}, running: 0, repos: [] }, checkouts: [], actions: {} };
+  let state = { inactive: [], stats: { today: {}, week: {}, running: 0, repos: [] }, checkouts: [], actions: {} };
   let tool = "claude";
+  const PAGE = 15;
+  let shown = PAGE;
 
   const esc = (text) => String(text ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
   function needHtml(row) {
-    const buttons = row.actions
-      .filter((a) => a !== "new" && a !== "newWorktree" && a !== "copyResume")
-      .map((a) => `<button data-command="${esc(state.actions[a].command)}">${esc(state.actions[a].label)}</button>`)
+    const buttons = ["resume", "copyResume", "openFolder"]
+      .filter((a) => row.actions.includes(a))
+      .map((a) => `<button data-command="${esc(state.actions[a].command)}"${a === "resume" ? ' class="primary"' : ""}>${esc(state.actions[a].label)}</button>`)
       .join("");
-    const meta = [`<span class="pill">${esc(row.status)}</span>`, row.branch ? `<span>⎇ ${esc(row.branch)}</span>` : "", row.external ? "<span>⇗ elsewhere</span>" : "", `<span>${esc(row.age)}</span>`].filter(Boolean);
-    return `<div class="need" data-id="${esc(row.id)}" data-status="${esc(row.status)}" title="${esc(row.waitingFor ? `waiting for: ${row.waitingFor}` : row.title)}">
+    const meta = [`<span>${esc(row.repo)}</span>`, row.branch ? `<span>⎇ ${esc(row.branch)}</span>` : "", `<span>${esc(row.age)}</span>`].filter(Boolean);
+    const prompt = row.lastPrompt && row.lastPrompt !== row.title ? `<span class="prompt">${esc(row.lastPrompt)}</span>` : "";
+    return `<div class="need" data-id="${esc(row.id)}" data-status="${esc(row.status)}" title="${esc(row.lastPrompt || row.title)}">
       <span class="title">${GLYPH[row.tool] || ""} ${esc(row.title)}</span>
       <span class="meta">${meta.join("")}</span>
+      ${prompt}
       <span class="actions">${buttons}</span>
     </div>`;
   }
 
+  function filtered() {
+    const words = $("filter").value.toLowerCase().split(/\s+/).filter(Boolean);
+    return state.inactive.filter((row) => words.every((w) => row.search.includes(w)));
+  }
+
   function render() {
-    const { needs, stats } = state;
-    $("needs-list").innerHTML = needs.length ? needs.map(needHtml).join("") : '<div class="empty">Nothing is waiting on you.</div>';
-    $("summary").textContent = `${stats.running} running · ${needs.length} waiting`;
+    const { stats } = state;
+    const rows = filtered();
+    $("resume-list").innerHTML = rows.length ? rows.slice(0, shown).map(needHtml).join("") : '<div class="empty">No finished sessions match.</div>';
+    $("more").style.display = rows.length > shown ? "" : "none";
+    $("more").textContent = `show more (${rows.length - shown} left)`;
+    const waiting = stats.repos.reduce((n, r) => n + r.waiting, 0);
+    $("summary").textContent = `${stats.running} running · ${waiting} waiting`;
     const card = (big, small) => `<div class="stat"><div class="big">${big}</div><div class="small">${small}</div></div>`;
     $("cards").innerHTML = [
       card(stats.running, "running now"),
@@ -43,12 +56,22 @@
     if (current && state.checkouts.includes(current)) dir.value = current;
   }
 
-  $("needs-list").addEventListener("click", (event) => {
+  $("resume-list").addEventListener("click", (event) => {
     const row = event.target.closest(".need");
     if (!row) return;
     const id = row.getAttribute("data-id");
     const button = event.target.closest("button");
     vscode.postMessage({ type: "command", command: button ? button.getAttribute("data-command") : "agtc.jump", id });
+  });
+
+  $("filter").addEventListener("input", () => {
+    shown = PAGE;
+    render();
+  });
+
+  $("more").addEventListener("click", () => {
+    shown += PAGE;
+    render();
   });
 
   $("tool").addEventListener("click", (event) => {

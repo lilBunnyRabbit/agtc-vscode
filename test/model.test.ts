@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { actionsOf, buildDetail, buildGroups, buildStats, digitsOf, needsYou } from "../src/views/model";
+import { actionsOf, buildDetail, buildGroups, buildStats, digitsOf, inactiveRows } from "../src/views/model";
 import { session } from "./fixtures";
 
 const NOW = 10_000_000;
@@ -75,14 +75,15 @@ describe("actionsOf", () => {
 });
 
 describe("home", () => {
-  test("needs you: input before done, oldest first", () => {
-    const rows = needsYou([
-      session({ id: "d-new", status: "done", since: NOW - 1000 }),
-      session({ id: "i", status: "needs input", since: NOW - 500 }),
-      session({ id: "d-old", status: "done", since: NOW - 9000 }),
+  test("resume list: finished sessions, newest first, searchable", () => {
+    const rows = inactiveRows([
+      session({ id: "old", status: "inactive", since: NOW - 9000, searchText: "old thing" }),
+      session({ id: "new", status: "inactive", since: NOW - 1000, lastPrompt: "fix the login" }),
       session({ id: "b", status: "busy" }),
     ], NOW);
-    expect(rows.map((r) => r.id)).toEqual(["i", "d-old", "d-new"]);
+    expect(rows.map((r) => r.id)).toEqual(["new", "old"]);
+    expect(rows[0].lastPrompt).toBe("fix the login");
+    expect(rows[1].search).toBe("old thing");
   });
 
   test("stats count activity by tool and worktrees per repo", () => {

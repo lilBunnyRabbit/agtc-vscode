@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { collapse, plural, tildify } from "../lib/text";
 import { DAY, relativeAge } from "../lib/time";
-import { STATUS_PRIORITY, type Session, type Status, workDir } from "../model/session";
+import { type Session, type Status, workDir } from "../model/session";
 import { HOME } from "../paths";
 
 export interface Row {
@@ -18,6 +18,9 @@ export interface Row {
   review: boolean;
   waitingFor?: string;
   actions: Action[];
+  repo: string;
+  lastPrompt?: string;
+  search: string;
 }
 
 export type Action = "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
@@ -99,7 +102,7 @@ export interface Stats {
 }
 
 export interface HomeState {
-  needs: Row[];
+  inactive: Row[];
   stats: Stats;
   checkouts: string[];
   actions: ViewState["actions"];
@@ -125,13 +128,12 @@ export function buildStats(sessions: Session[], now = Date.now()): Stats {
   return { today: count(DAY), week: count(7 * DAY), running: sessions.filter((s) => s.status !== "inactive").length, repos };
 }
 
-/** Input before done, the longest waiting first. */
-export function needsYou(sessions: Session[], now = Date.now()): Row[] {
-  const digits = digitsOf(sessions);
+/** Finished sessions, the most recently active first. */
+export function inactiveRows(sessions: Session[], now = Date.now()): Row[] {
   return sessions
-    .filter((s) => s.status === "needs input" || s.status === "done")
-    .sort((a, b) => STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status] || a.since - b.since)
-    .map((s) => rowOf(s, sessions, digits.get(s.id), now));
+    .filter((s) => s.status === "inactive")
+    .sort((a, b) => b.since - a.since)
+    .map((s) => rowOf(s, sessions, undefined, now));
 }
 
 export const actionTable = (): ViewState["actions"] =>
@@ -176,6 +178,9 @@ function rowOf(session: Session, group: Session[], digit: number | undefined, no
     review: !!session.reviewOf && group.some((s) => s.id === session.reviewOf),
     waitingFor: session.waitingFor,
     actions: actionsOf(session),
+    repo: session.repo,
+    lastPrompt: session.lastPrompt ? collapse(session.lastPrompt, PROMPT_WIDTH) : undefined,
+    search: session.searchText,
   };
 }
 

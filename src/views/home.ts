@@ -83,7 +83,7 @@ export class HomePanel {
   <textarea id="task" rows="4" placeholder="What should it do? Empty starts the agent with no task."></textarea>
   <div class="toolbar end"><span id="note"></span><button id="start" class="primary">Start <kbd>⌘⏎</kbd></button></div>
 </section>
-<section id="needs"><h2>Needs you</h2><div id="needs-list"></div></section>
+<section id="resume"><div class="section-head"><h2>Resume</h2><input id="filter" placeholder="filter by name, prompt, repo or branch"></div><div id="resume-list"></div><button id="more" class="ghost">show more</button></section>
 <section id="stats"><h2>Activity</h2><div id="cards" class="cards"></div><table id="repos"></table></section>
 </div>
 <script nonce="${nonce}" src="${asset("home.js")}"></script>

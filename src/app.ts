@@ -6,7 +6,7 @@ import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
 import { collectSessions } from "./model/sessions";
 import { StateStore } from "./model/state-store";
 import { STATE_FILE } from "./paths";
-import { actionTable, buildDetail, buildGroups, buildStats, needsYou } from "./views/model";
+import { actionTable, buildDetail, buildGroups, buildStats, inactiveRows } from "./views/model";
 import { HomePanel } from "./views/home";
 import { SessionsPanel } from "./views/panel";
 import { type Remembered, WindowMemory } from "./spawn/memory";
@@ -156,7 +156,7 @@ export class App {
       showInactive: this.showInactive,
       actions,
     });
-    this.home.set({ needs: needsYou(this.list), stats: buildStats(this.list), checkouts: knownCheckouts(this.list), actions });
+    this.home.set({ inactive: inactiveRows(this.list), stats: buildStats(this.list), checkouts: knownCheckouts(this.list), actions });
     this.showWaiting();
   }
 
