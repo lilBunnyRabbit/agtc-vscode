@@ -41,8 +41,7 @@ F5 ("Run Extension") builds and opens a VS Code window with the extension loaded
 ## Install
 
 ```
-bun run package
-code --install-extension agtc-0.1.0.vsix
+bun run install:local
 ```
 
-`code` comes from the Command Palette, "Shell Command: Install 'code' command in PATH".
+Packages the extension and installs it into VS Code, replacing the installed version. Then `Developer: Reload Window` in every open window. To remove it: `code --uninstall-extension lilbunnyrabbit.agtc`.
