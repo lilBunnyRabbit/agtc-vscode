@@ -69,6 +69,7 @@ export class HomePanel {
 <link rel="stylesheet" href="${asset("home.css")}">
 </head>
 <body class="home">
+<div class="page">
 <header><span class="logo">✳</span><h1>Agent Traffic Control</h1><span id="summary"></span></header>
 <section id="composer" class="card">
   <div class="toolbar">
@@ -84,6 +85,7 @@ export class HomePanel {
 </section>
 <section id="needs"><h2>Needs you</h2><div id="needs-list"></div></section>
 <section id="stats"><h2>Activity</h2><div id="cards" class="cards"></div><table id="repos"></table></section>
+</div>
 <script nonce="${nonce}" src="${asset("home.js")}"></script>
 </body>
 </html>`;
