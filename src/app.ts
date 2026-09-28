@@ -262,7 +262,7 @@ export class App {
   }
 
   openFolder(dir: string): Promise<boolean> {
-    return openFolderHere(dir, () => this.memory.willRestart());
+    return openFolderHere(dir, (from, to) => this.memory.move(from, to));
   }
 
   jumpDigit(digit: number): Promise<void> | undefined {
