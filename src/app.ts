@@ -9,6 +9,9 @@ import { HOME, STATE_FILE } from "./paths";
 import { Notifier } from "./notify";
 import { reviewerReport } from "./review/report";
 import { ReviewThreads } from "./review/threads";
+import { factsOf } from "./worktrees/cleanup";
+import { readWorktrees } from "./worktrees/read";
+import { type Worktree, isRemovable } from "./worktrees/state";
 import { actionTable, buildDetail, buildGroups, buildStats, checkoutsOf, inactiveRows } from "./views/model";
 import { HomePanel } from "./views/home";
 import { SessionsPanel } from "./views/panel";
@@ -18,6 +21,7 @@ import { knownCheckouts, startFromComposer } from "./spawn/flows";
 
 const POLL_VISIBLE_MS = 2 * SECOND;
 const POLL_HIDDEN_MS = 10 * SECOND;
+const WORKTREES_TTL_MS = 60 * SECOND;
 
 export class App {
   readonly state = StateStore.load(STATE_FILE);
@@ -28,6 +32,7 @@ export class App {
   private terminals = new Map<string, Terminal>();
   private readonly replies = new Map<string, string | undefined>();
   readonly threads = new ReviewThreads();
+  private readonly worktrees = new Map<string, { at: number; byDir: Map<string, Worktree> }>();
   private readonly notifier = new Notifier();
   private list: Session[] = [];
   private selectedId: string | undefined;
@@ -158,6 +163,26 @@ export class App {
     return this.inWindow.filter((s) => !s.id.startsWith("pid-")).map((s) => ({ id: s.id, tool: s.tool, cwd: s.cwd, reviewOf: s.reviewOf }));
   }
 
+  /** Reading a repo's worktrees runs git in each; done for the selected session's repo only, at most once a minute, off the render path. */
+  private worktreeState(session: Session): string | undefined {
+    const { mainRoot, root, worktree } = session;
+    if (!mainRoot || !root || !worktree) return undefined;
+    const cached = this.worktrees.get(mainRoot);
+    if (!cached || Date.now() - cached.at > WORKTREES_TTL_MS) {
+      this.worktrees.set(mainRoot, { at: Date.now(), byDir: cached?.byDir ?? new Map() });
+      void readWorktrees(mainRoot, this.list).then((report) => {
+        this.worktrees.set(mainRoot, { at: Date.now(), byDir: new Map(report?.worktrees.map((w) => [w.dir, w])) });
+        this.render();
+      });
+    }
+    const found = cached?.byDir.get(root);
+    return found ? `${factsOf(found)}${isRemovable(found) ? " · safe to remove" : ""}` : undefined;
+  }
+
+  forgetWorktrees(): void {
+    this.worktrees.clear();
+  }
+
   /** A finished session's transcript no longer changes, so its last message is read once per last-activity time. */
   private replyOf(session: Session): string | undefined {
     const key = `${session.id}:${session.since}`;
@@ -170,7 +195,7 @@ export class App {
     const actions = actionTable();
     this.panel.set({
       groups: buildGroups(this.list, this.showInactive),
-      detail: selected ? buildDetail(selected) : undefined,
+      detail: selected ? buildDetail(selected, Date.now(), this.worktreeState(selected)) : undefined,
       selectedId: this.selectedId,
       showInactive: this.showInactive,
       actions,

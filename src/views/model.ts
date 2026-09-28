@@ -32,9 +32,10 @@ export interface Checkout {
   name: string;
 }
 
-export type Action = "review" | "handBack" | "closeReviewer" | "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
+export type Action = "cleanWorktrees" | "review" | "handBack" | "closeReviewer" | "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
 
 export const ACTION_LABEL: Record<Action, string> = {
+  cleanWorktrees: "clean up worktrees",
   review: "review",
   handBack: "hand report back",
   closeReviewer: "close reviewer",
@@ -49,6 +50,7 @@ export const ACTION_LABEL: Record<Action, string> = {
 };
 
 export const ACTION_COMMAND: Record<Action, string> = {
+  cleanWorktrees: "agtc.cleanWorktrees",
   review: "agtc.review",
   handBack: "agtc.review",
   closeReviewer: "agtc.closeReviewer",
@@ -65,6 +67,7 @@ export const ACTION_COMMAND: Record<Action, string> = {
 export type ActionKind = "primary" | "review" | "good" | "danger" | "neutral" | "quiet";
 
 export const ACTION_KIND: Record<Action, ActionKind> = {
+  cleanWorktrees: "quiet",
   jump: "primary",
   resume: "primary",
   review: "review",
@@ -89,6 +92,7 @@ export function actionsOf(session: Session): Action[] {
   else if (session.mainRoot && !session.worktree && (session.terminal || session.tool === "codex")) actions.push("worktree");
   if (!inactive && (session.status === "needs input" || session.status === "done")) actions.push("markSeen");
   actions.push("new", "newWorktree", "copyResume", "openFolder");
+  if (session.mainRoot) actions.push("cleanWorktrees");
   return actions;
 }
 
@@ -244,9 +248,10 @@ export function repoDescription(sessions: Session[]): string {
   return parts.join(" · ");
 }
 
-export function buildDetail(session: Session, now = Date.now()): Detail {
+export function buildDetail(session: Session, now = Date.now(), worktreeState?: string): Detail {
   const dir = workDir(session);
   const items: DetailItem[] = [{ icon: "folder", label: tildify(dir, HOME), description: session.worktree ? `worktree ${session.worktree}` : undefined }];
+  if (worktreeState) items.push({ icon: "worktree", label: worktreeState });
   if (session.branch) items.push({ icon: "branch", label: session.branch });
   if (session.roots.length > 1) {
     items.push({ icon: "roots", label: "also touched", children: session.roots.slice(1).map((root) => ({ icon: "folder", label: tildify(root, HOME) })) });

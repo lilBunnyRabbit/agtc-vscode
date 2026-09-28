@@ -146,6 +146,12 @@
         "title": "Dismiss",
         "icon": "$(close)",
         "category": "agtc"
+      },
+      {
+        "command": "agtc.cleanWorktrees",
+        "title": "Clean Up Worktrees",
+        "icon": "$(trash)",
+        "category": "agtc"
       }
     ],
     "keybindings": [

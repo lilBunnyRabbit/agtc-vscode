@@ -16,6 +16,10 @@ Findings the report names as `path:line` become comment threads on those lines i
 
 A toast shows when a session turns to needs input or done while its terminal is not in front, gone after `agtc.notificationSeconds`.
 
+## Worktrees
+
+"Clean Up Worktrees" (command palette, or the link under a session's detail) lists the repository's worktrees with their state: `fresh` never committed to, `gone` upstream deleted after a merge, `missing` directory gone, `pushed`, `unpushed`, `dirty`, `detached`. Live and locked ones are left out. The safe ones, `fresh`, `gone` and `missing`, come ticked. One confirm removes what is ticked; ticking one that holds work nowhere else says so in the confirm. `gone` and `fresh` lose their branch too, every other branch stays. The detail of a session in a worktree shows that worktree's state.
+
 Agents that ran in a window come back when it reopens (`agtc.resumeOnStartup`). Worktrees go under `.claude/worktrees` of the repo (`agtc.worktreeDir`), branched from the remote default (`agtc.baseBranch`). `agtc.terminalLocation: editor` gives agents a full tab.
 
 ## Develop

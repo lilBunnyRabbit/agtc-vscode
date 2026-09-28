@@ -7,6 +7,7 @@
     folder: "▣",
     branch: "⎇",
     roots: "⋯",
+    worktree: "⎇",
     diff: "±",
     file: "·",
     wait: "!",
