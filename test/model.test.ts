@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildDetail, buildGroups, digitsOf } from "../src/views/model";
+import { actionsOf, buildDetail, buildGroups, digitsOf } from "../src/views/model";
 import { session } from "./fixtures";
 
 const NOW = 10_000_000;
@@ -60,5 +60,16 @@ describe("buildDetail", () => {
     expect(detail.items[2].children?.map((c) => c.file)).toEqual(["/repo/x/a.ts", "/repo/x/b.ts"]);
     expect(detail.items[3].description).toBe("1m");
     expect(detail.items[3].children?.map((c) => c.label)).toEqual(["three", "two"]);
+  });
+});
+
+describe("actionsOf", () => {
+  test("running here can move to a worktree, finished can resume, external claude cannot move", () => {
+    expect(actionsOf(session({ status: "busy", terminal: "t1" }))).toContain("worktree");
+    expect(actionsOf(session({ status: "busy" }))).not.toContain("worktree");
+    expect(actionsOf(session({ status: "busy", tool: "codex" }))).toContain("worktree");
+    expect(actionsOf(session({ status: "busy", terminal: "t1", worktree: "x" }))).not.toContain("worktree");
+    expect(actionsOf(session({ status: "inactive" }))).toContain("resume");
+    expect(actionsOf(session({ status: "done", terminal: "t1" }))).toContain("markSeen");
   });
 });

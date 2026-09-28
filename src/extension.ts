@@ -40,6 +40,7 @@ export function activate(context: ExtensionContext): void {
       return session && resumeAgent(app, session);
     }),
     commands.registerCommand("agtc.compose", () => compose(app)),
+    commands.registerCommand("agtc.home", () => app.home.show()),
     commands.registerCommand("agtc.copyResume", async (id?: string) => {
       const session = app.sessionOf(id);
       if (!session) return;

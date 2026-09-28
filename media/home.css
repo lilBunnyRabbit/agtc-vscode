@@ -1,0 +1,101 @@
+body.home {
+  overflow-y: auto;
+  padding: 12px 20px 40px;
+  max-width: 960px;
+  box-sizing: border-box;
+}
+
+.home h2 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.field label {
+  color: var(--dim);
+}
+
+.field input[type="text"],
+.field input:not([type]),
+.field select,
+.field textarea {
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  padding: 4px 6px;
+}
+
+.field textarea {
+  grid-column: 2 / span 2;
+  resize: vertical;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.home button {
+  font: inherit;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  border: none;
+  border-radius: 2px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.home button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.home button.primary {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.home button.primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.segment {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.segment button.on {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+#note {
+  color: var(--dim);
+}
+
+.home .row {
+  grid-template-columns: 14px 1fr auto;
+}
+
+.home .actions {
+  grid-column: 1 / span 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.home .actions button {
+  padding: 1px 8px;
+  font-size: 0.9em;
+}

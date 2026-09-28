@@ -17,7 +17,7 @@
     busy: "◐",
     done: "✓",
   };
-  let state = { groups: [], showInactive: false };
+  let state = { groups: [], showInactive: false, actions: {} };
   let selectedId;
 
   const esc = (text) => String(text ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -75,7 +75,9 @@
       items.push(itemHtml(item, false));
       for (const child of item.children || []) items.push(itemHtml(child, true));
     }
-    detail.innerHTML = `<h3 title="${esc(d.title)}">${esc(d.title)}</h3>${items.join("")}`;
+    const row = state.groups.flatMap((g) => g.rows).find((r) => r.id === d.id);
+    const buttons = (row ? row.actions : []).map((a) => `<button data-command="${esc(state.actions[a].command)}">${esc(state.actions[a].label)}</button>`).join("");
+    detail.innerHTML = `<h3 title="${esc(d.title)}">${esc(d.title)}</h3><div class="actions">${buttons}</div>${items.join("")}`;
   }
 
   function itemHtml(item, child) {
@@ -120,6 +122,8 @@
   });
 
   detail.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (button) return vscode.postMessage({ type: "command", command: button.getAttribute("data-command"), id: selectedId });
     const item = event.target.closest(".item.link");
     const file = item && item.getAttribute("data-file");
     if (file) vscode.postMessage({ type: "openFile", file });
@@ -141,7 +145,7 @@
     N: () => command("agtc.newWorktree"),
     W: () => command("agtc.moveToWorktree"),
     R: () => command("agtc.resume"),
-    t: () => command("agtc.compose"),
+    t: () => command("agtc.home"),
   };
 
   list.addEventListener("keydown", (event) => {

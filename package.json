@@ -118,6 +118,12 @@
         "title": "Start an Agent with a Task",
         "icon": "$(rocket)",
         "category": "agtc"
+      },
+      {
+        "command": "agtc.home",
+        "title": "Home",
+        "icon": "$(home)",
+        "category": "agtc"
       }
     ],
     "keybindings": [
@@ -134,7 +140,7 @@
         "key": "cmd+alt+n"
       },
       {
-        "command": "agtc.compose",
+        "command": "agtc.home",
         "key": "cmd+alt+t"
       },
       {
@@ -190,7 +196,7 @@
     "menus": {
       "view/title": [
         {
-          "command": "agtc.compose",
+          "command": "agtc.home",
           "when": "view == agtc.sessions",
           "group": "navigation@0"
         },

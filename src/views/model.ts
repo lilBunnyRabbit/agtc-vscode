@@ -17,6 +17,41 @@ export interface Row {
   external: boolean;
   review: boolean;
   waitingFor?: string;
+  actions: Action[];
+}
+
+export type Action = "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
+
+export const ACTION_LABEL: Record<Action, string> = {
+  jump: "jump",
+  worktree: "move to worktree",
+  resume: "resume",
+  new: "new agent here",
+  newWorktree: "new worktree",
+  copyResume: "copy resume",
+  openFolder: "open in new window",
+  markSeen: "seen",
+};
+
+export const ACTION_COMMAND: Record<Action, string> = {
+  jump: "agtc.jump",
+  worktree: "agtc.moveToWorktree",
+  resume: "agtc.resume",
+  new: "agtc.new",
+  newWorktree: "agtc.newWorktree",
+  copyResume: "agtc.copyResume",
+  openFolder: "agtc.openFolder",
+  markSeen: "agtc.markSeen",
+};
+
+export function actionsOf(session: Session): Action[] {
+  const inactive = session.status === "inactive";
+  const actions: Action[] = ["jump"];
+  if (inactive) actions.push("resume");
+  else if (session.mainRoot && !session.worktree && (session.terminal || session.tool === "codex")) actions.push("worktree");
+  if (!inactive && (session.status === "needs input" || session.status === "done")) actions.push("markSeen");
+  actions.push("new", "newWorktree", "copyResume", "openFolder");
+  return actions;
 }
 
 export interface Group {
@@ -45,7 +80,17 @@ export interface ViewState {
   detail?: Detail;
   selectedId?: string;
   showInactive: boolean;
+  actions: Record<Action, { label: string; command: string }>;
 }
+
+export interface HomeState {
+  groups: Group[];
+  checkouts: string[];
+  actions: ViewState["actions"];
+}
+
+export const actionTable = (): ViewState["actions"] =>
+  Object.fromEntries((Object.keys(ACTION_LABEL) as Action[]).map((a) => [a, { label: ACTION_LABEL[a], command: ACTION_COMMAND[a] }])) as ViewState["actions"];
 
 const MAX_DIGIT = 9;
 const PROMPT_WIDTH = 160;
@@ -85,6 +130,7 @@ function rowOf(session: Session, group: Session[], digit: number | undefined, no
     external: !session.terminal && session.status !== "inactive",
     review: !!session.reviewOf && group.some((s) => s.id === session.reviewOf),
     waitingFor: session.waitingFor,
+    actions: actionsOf(session),
   };
 }
 

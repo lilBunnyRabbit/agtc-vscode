@@ -262,3 +262,24 @@ body {
 .item.wait .icon {
   color: var(--input);
 }
+
+#detail .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 2px;
+}
+
+#detail .actions button {
+  font: inherit;
+  font-size: 0.9em;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+#detail .actions button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}

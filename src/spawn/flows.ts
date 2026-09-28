@@ -100,16 +100,38 @@ function askBranch(): Thenable<string | undefined> {
   return window.showInputBox({ prompt: "branch for the new worktree", validateInput: (v) => (/^[\w./+-]+$/.test(v.trim()) ? undefined : "letters, digits, . / _ + -") }).then((v) => v?.trim() || undefined);
 }
 
-async function pickCheckout(ctx: SpawnContext, session: Session | undefined, placeHolder: string): Promise<string | undefined> {
+/** The session's own checkout, the open folders, then every checkout seen, the session's repo first. */
+export function knownCheckouts(sessions: Session[], session?: Session): string[] {
   const dirs = new Set<string>();
   if (session) dirs.add(workDir(session));
   for (const folder of workspace.workspaceFolders ?? []) dirs.add(folder.uri.fsPath);
-  const sameRepoFirst = [...ctx.sessions].sort((a, b) => Number(b.repo === (session?.repo ?? "")) - Number(a.repo === (session?.repo ?? "")));
+  const sameRepoFirst = [...sessions].sort((a, b) => Number(b.repo === (session?.repo ?? "")) - Number(a.repo === (session?.repo ?? "")));
   for (const s of sameRepoFirst) {
     if (s.mainRoot) dirs.add(s.mainRoot);
     dirs.add(workDir(s));
   }
-  const known = [...dirs].filter((dir) => existsSync(dir)).map((dir) => tildify(dir, HOME));
+  return [...dirs].filter((dir) => existsSync(dir));
+}
+
+export interface ComposerInput {
+  tool: Tool;
+  dir: string;
+  branch?: string;
+  task: string;
+}
+
+/** The home page composer: a task in a checkout, or in a new worktree of it. */
+export async function startFromComposer(ctx: SpawnContext, { tool, dir, branch, task }: ComposerInput): Promise<void> {
+  if (!existsSync(dir)) return say(`no such directory: ${tildify(dir, HOME)}`);
+  const taskPath = task.trim() ? writeTask(task) : undefined;
+  if (!branch) return startAgent(ctx, tool, dir, taskPath);
+  const mainRoot = ctx.sessions.find((s) => workDir(s) === dir)?.mainRoot ?? dir;
+  const worktree = await createWorktreeFor(mainRoot, branch);
+  if (worktree) await startAgent(ctx, tool, worktree, taskPath);
+}
+
+async function pickCheckout(ctx: SpawnContext, session: Session | undefined, placeHolder: string): Promise<string | undefined> {
+  const known = knownCheckouts(ctx.sessions, session).map((dir) => tildify(dir, HOME));
   const OTHER = "other…";
   const picked = await window.showQuickPick([...known, OTHER], { placeHolder });
   if (!picked) return undefined;

@@ -6,10 +6,12 @@ import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
 import { collectSessions } from "./model/sessions";
 import { StateStore } from "./model/state-store";
 import { STATE_FILE } from "./paths";
-import { buildDetail, buildGroups } from "./views/model";
+import { actionTable, buildDetail, buildGroups } from "./views/model";
+import { HomePanel } from "./views/home";
 import { SessionsPanel } from "./views/panel";
 import { type Remembered, WindowMemory } from "./spawn/memory";
 import { restoreSessions } from "./spawn/restore";
+import { knownCheckouts, startFromComposer } from "./spawn/flows";
 
 const POLL_VISIBLE_MS = 2 * SECOND;
 const POLL_HIDDEN_MS = 10 * SECOND;
@@ -18,6 +20,7 @@ export class App {
   readonly state = StateStore.load(STATE_FILE);
   readonly panel: SessionsPanel;
   readonly memory: WindowMemory;
+  readonly home: HomePanel;
   private readonly status = window.createStatusBarItem(StatusBarAlignment.Left, 50);
   private terminals = new Map<string, Terminal>();
   private list: Session[] = [];
@@ -33,6 +36,20 @@ export class App {
   ) {
     this.panel = new SessionsPanel(extensionUri);
     this.memory = new WindowMemory(memento);
+    this.home = new HomePanel(extensionUri);
+    this.home.onDidChangeVisibility(() => this.schedule());
+    this.home.onMessage((message) => {
+      switch (message.type) {
+        case "start":
+          return void startFromComposer(this, message.input);
+        case "browse":
+          return void window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false }).then((uris) => uris?.[0] && this.home.picked(uris[0].fsPath));
+        case "command":
+          return void commands.executeCommand(message.command, message.id);
+        case "ready":
+          return this.render();
+      }
+    });
     this.status.command = "agtc.jumpWaiting";
     this.panel.onDidChangeVisibility(() => this.schedule());
     this.panel.onMessage((message) => {
@@ -73,6 +90,7 @@ export class App {
     this.disposed = true;
     clearTimeout(this.timer);
     this.status.dispose();
+    this.home.dispose();
   }
 
   get sessions(): Session[] {
@@ -124,12 +142,15 @@ export class App {
 
   private render(): void {
     const selected = this.selected;
+    const actions = actionTable();
     this.panel.set({
       groups: buildGroups(this.list, this.showInactive),
       detail: selected ? buildDetail(selected) : undefined,
       selectedId: this.selectedId,
       showInactive: this.showInactive,
+      actions,
     });
+    this.home.set({ groups: buildGroups(this.list, true), checkouts: knownCheckouts(this.list), actions });
     this.showWaiting();
   }
 
@@ -139,7 +160,7 @@ export class App {
     this.timer = setTimeout(async () => {
       await this.refresh();
       this.schedule();
-    }, this.panel.visible ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
+    }, this.panel.visible || this.home.visible ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
   }
 
   private showWaiting(): void {
