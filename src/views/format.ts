@@ -1,4 +1,5 @@
 import { ThemeColor, ThemeIcon } from "vscode";
+import { collapse } from "../lib/text";
 import { relativeAge } from "../lib/time";
 import type { Session, Status } from "../model/session";
 
@@ -21,8 +22,11 @@ export function statusIcon(status: Status): ThemeIcon {
 
 export function sessionLabel(session: Session, underSubject: boolean): string {
   const glyphs = `${TOOL_GLYPH[session.tool]}${session.worktree ? " ⎇" : ""}`;
-  return `${glyphs} ${underSubject ? "╰ review" : session.title}`;
+  return `${glyphs} ${underSubject ? "╰ review" : collapse(session.title, LABEL_WIDTH)}`;
 }
+
+/** A label past this hides the description in a sidebar of usual width. */
+const LABEL_WIDTH = 44;
 
 export function sessionDescription(session: Session, now = Date.now()): string {
   const parts = [session.verdict ? (session.verdict.ready ? "ready" : "not ready") : session.status, relativeAge(session.since, now)];
