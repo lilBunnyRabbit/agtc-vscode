@@ -290,7 +290,7 @@
     "test": "bun test",
     "package": "bunx @vscode/vsce package --no-dependencies",
     "vscode:prepublish": "bun run build",
-    "dev": "bun run build && \"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code\" --extensionDevelopmentPath=\"$PWD\" --new-window"
+    "dev": "bun run build && env -u NODE_OPTIONS -u VSCODE_INSPECTOR_OPTIONS \"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code\" --extensionDevelopmentPath=\"$PWD\" --new-window"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

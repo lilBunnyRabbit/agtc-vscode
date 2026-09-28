@@ -1,11 +1,13 @@
 import { type Terminal, TerminalLocation, window, workspace } from "vscode";
 
 const SHELL_READY_TIMEOUT_MS = 4000;
+/** The debugger's bootloader in NODE_OPTIONS makes claude exit 1 without a word; a window started from a debug terminal or with auto attach carries it. */
+const WITHOUT_DEBUGGER = { NODE_OPTIONS: null, VSCODE_INSPECTOR_OPTIONS: null };
 
 /** Text sent before the shell is up gets garbled into its startup, so the command waits for shell integration, or a timeout without it. */
 export function openAgentTerminal(dir: string, command: string, name: string): Terminal {
   const editor = workspace.getConfiguration("agtc").get<string>("terminalLocation", "panel") === "editor";
-  const terminal = window.createTerminal({ name, cwd: dir, location: editor ? TerminalLocation.Editor : TerminalLocation.Panel });
+  const terminal = window.createTerminal({ name, cwd: dir, env: WITHOUT_DEBUGGER, location: editor ? TerminalLocation.Editor : TerminalLocation.Panel });
   terminal.show();
   let sent = false;
   const send = () => {
