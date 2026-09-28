@@ -16,8 +16,11 @@ const ttyName = (path: string) => path.replace("/dev/", "");
 
 export const hasSession = (name: string) => ok("has-session", "-t", `=${name}`);
 
+/** Claude Code drops to 256 colours under tmux unless CLAUDE_CODE_TMUX_TRUECOLOR says otherwise. */
 export async function ensureAgentsSession(): Promise<boolean> {
-  return (await hasSession(AGENTS_SESSION)) || ok("new-session", "-d", "-s", AGENTS_SESSION, "-n", "shell", "-c", HOME);
+  if (!(await hasSession(AGENTS_SESSION)) && !(await ok("new-session", "-d", "-s", AGENTS_SESSION, "-n", "shell", "-c", HOME))) return false;
+  await ok("set-environment", "-t", `=${AGENTS_SESSION}:`, "CLAUDE_CODE_TMUX_TRUECOLOR", "1");
+  return true;
 }
 
 /**

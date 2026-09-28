@@ -42,6 +42,7 @@ export class Viewer {
     const terminal = await this.ensure();
     if (!terminal) return false;
     const session = this.sessionOf(terminal)!;
+    await this.configure(session);
     const shared = place.session === AGENTS_SESSION || place.group === AGENTS_SESSION;
     const tty = await this.clientTty();
     if (shared) {
@@ -51,6 +52,16 @@ export class Viewer {
     await tmux("select-pane", "-t", pane);
     terminal.show(preserveFocus);
     return true;
+  }
+
+  /**
+   * Options are per session and the viewer's is new, so nothing the hub set on `agtc` applies.
+   * Without the mouse, the editor turns the wheel into arrow keys, one line a notch, and they
+   * land in the agent's input. The status line would repeat the sidebar.
+   */
+  private async configure(session: string): Promise<void> {
+    await tmux("set-option", "-t", `=${session}:`, "mouse", "on");
+    await tmux("set-option", "-t", `=${session}:`, "status", "off");
   }
 
   private async ensure(): Promise<Terminal | undefined> {
