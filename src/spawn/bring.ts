@@ -5,7 +5,6 @@ import { collapse } from "../lib/text";
 import { type Session, resumeInvocation } from "../model/session";
 import { checkoutName } from "../sources/git";
 import type { SpawnContext } from "./flows";
-import { openAgentTerminal } from "./terminal";
 
 const EXIT_TIMEOUT_MS = 10_000;
 const EXIT_POLL_MS = 200;
@@ -34,9 +33,8 @@ export async function bringHere(ctx: SpawnContext, session: Session): Promise<vo
     void window.showErrorMessage(`${session.tool} process ${session.pid} did not exit: quit it where it runs, then resume`);
     return;
   }
-  openAgentTerminal(session.cwd, resumeInvocation(session), await checkoutName(session.cwd));
-  say(`brought ${session.tool} here`);
-  setTimeout(() => void ctx.refresh(), 1500);
+  say(`bringing ${session.tool} here`);
+  await ctx.launch(session.cwd, resumeInvocation(session), await checkoutName(session.cwd));
 }
 
 async function exited(pid: number): Promise<boolean> {

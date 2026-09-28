@@ -1,28 +1,25 @@
 import { existsSync } from "node:fs";
-import { window, workspace } from "vscode";
+import { type Terminal, window, workspace } from "vscode";
 import { collapse, tildify, untildify } from "../lib/text";
 import { type Session, type Tool, TOOLS, resumeInvocation, workDir } from "../model/session";
 import { HOME } from "../paths";
 import { baseBranch, checkoutName, createWorktree } from "../sources/git";
 import { attach, withAttachments } from "./attachments";
 import { DEFAULT_WORKTREES_DIR, enterWorktreeRequest, startCommand, worktreeDir, writeTask } from "./task";
-import { openAgentTerminal } from "./terminal";
 
 export interface SpawnContext {
   sessions: Session[];
-  terminalOf(session: Session): { sendText(text: string): void; show(): void } | undefined;
+  terminalOf(session: Session): Terminal | undefined;
   refresh(): Promise<void>;
-  /** False when the folder is already the window's. */
-  openFolder(dir: string): Promise<boolean>;
+  /** Undefined when the window restarts first; the agent then starts after the restart. */
+  launch(dir: string, command: string, name: string, beside?: Terminal): Promise<Terminal | undefined>;
 }
 
 const say = (text: string): void => void window.setStatusBarMessage(`agtc: ${text}`, 4000);
 
 export async function startAgent(ctx: SpawnContext, tool: Tool, dir: string, taskPath?: string): Promise<void> {
-  openAgentTerminal(dir, startCommand(tool, taskPath), await checkoutName(dir));
-  say(`started ${tool} in ${tildify(dir, HOME)}`);
-  await ctx.openFolder(dir);
-  setTimeout(() => void ctx.refresh(), 1500);
+  say(`starting ${tool} in ${tildify(dir, HOME)}`);
+  await ctx.launch(dir, startCommand(tool, taskPath), await checkoutName(dir));
 }
 
 /** `n`: the session's tool in a checkout of its repo, the session's own first. */
@@ -72,9 +69,8 @@ export async function resumeAgent(ctx: SpawnContext, session: Session): Promise<
   if (session.status !== "inactive") return say("still running");
   const dir = session.cwd;
   if (!existsSync(dir)) return say(`directory is gone: ${tildify(dir, HOME)}`);
-  openAgentTerminal(dir, resumeInvocation(session), await checkoutName(dir));
-  say(`resumed ${session.tool} in ${tildify(dir, HOME)}`);
-  if (!(await ctx.openFolder(workDir(session)))) setTimeout(() => void ctx.refresh(), 1500);
+  say(`resuming ${session.tool} in ${tildify(dir, HOME)}`);
+  await ctx.launch(dir, resumeInvocation(session), await checkoutName(dir));
 }
 
 /** `⌘⌥T`: tool, checkout, worktree or not, task. */

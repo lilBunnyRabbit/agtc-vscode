@@ -10,6 +10,13 @@ export interface Remembered {
 
 const KEY = "agtc.windows";
 const SWAP_KEY = "agtc.swappedAt";
+const LAUNCH_KEY = "agtc.pendingLaunch";
+
+export interface Launch {
+  dir: string;
+  command: string;
+  name: string;
+}
 const SWAP_WINDOW_MS = 60_000;
 
 /**
@@ -44,6 +51,16 @@ export class WindowMemory {
   move(from: string, to: string): Thenable<void> {
     const { [from]: sessions = [], ...rest } = this.all();
     return this.memento.update(SWAP_KEY, Date.now()).then(() => this.memento.update(KEY, { ...rest, [to]: sessions }));
+  }
+
+  /** A launch that has to wait for the restart the first switch of a window causes. */
+  defer(launch: Launch): Thenable<void> {
+    return this.memento.update(LAUNCH_KEY, { ...launch, at: Date.now() });
+  }
+
+  takeDeferred(): Thenable<Launch | undefined> {
+    const launch = this.memento.get<Launch & { at: number }>(LAUNCH_KEY);
+    return this.memento.update(LAUNCH_KEY, undefined).then(() => (launch && Date.now() - launch.at < SWAP_WINDOW_MS ? launch : undefined));
   }
 
   afterSwap(): Thenable<boolean> {

@@ -1,5 +1,6 @@
 import { type Memento, type OutputChannel, StatusBarAlignment, type Terminal, Uri, commands, env, window, workspace } from "vscode";
-import { currentFolder, openFolderHere } from "./folder";
+import { type Switch, currentFolder, editorKnows, needsPin, openFolderHere } from "./folder";
+import { openAgentTerminal } from "./spawn/terminal";
 import { SECOND } from "./lib/time";
 import { linkedTerminals } from "./link/terminals";
 import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
@@ -99,6 +100,11 @@ export class App {
     const config = workspace.getConfiguration("agtc");
     const afterSwap = await this.memory.afterSwap();
     if (!afterSwap && config.get<boolean>("showOnStartup", true)) this.home.show(true);
+    const deferred = await this.memory.takeDeferred();
+    if (deferred && existsSync(deferred.dir)) {
+      await editorKnows(deferred.dir);
+      openAgentTerminal(deferred.dir, deferred.command, deferred.name);
+    }
     const remembered = await this.memory.take(currentFolder());
     if (remembered.length && config.get<boolean>("resumeOnStartup", true)) {
       const opened = await restoreSessions(remembered, this.list);
@@ -258,11 +264,30 @@ export class App {
     if (terminal) terminal.show();
     else if (session.status !== "inactive") window.setStatusBarMessage(`${session.title}: runs outside this window`, 3 * SECOND);
     this.state.mark(session.id);
-    if (!(await this.openFolder(workDir(session)))) await this.refresh();
+    if ((await this.openFolder(workDir(session))) === "same") await this.refresh();
   }
 
-  openFolder(dir: string): Promise<boolean> {
+  openFolder(dir: string): Promise<Switch> {
     return openFolderHere(dir, (from, to) => this.memory.move(from, to));
+  }
+
+  /**
+   * An agent in a terminal, in a window that shows its checkout. The window switches first and
+   * the editor's lock has to name the checkout before the agent starts, or it comes up without
+   * the editor. A window's first switch restarts the extension host: the launch is kept and runs
+   * after the restart.
+   */
+  async launch(dir: string, command: string, name: string, beside?: Terminal): Promise<Terminal | undefined> {
+    if (needsPin()) {
+      await this.memory.defer({ dir, command, name });
+      await this.openFolder(dir);
+      return undefined;
+    }
+    await this.openFolder(dir);
+    await editorKnows(dir);
+    const terminal = openAgentTerminal(dir, command, name, beside);
+    setTimeout(() => void this.refresh(), 1500);
+    return terminal;
   }
 
   jumpDigit(digit: number): Promise<void> | undefined {

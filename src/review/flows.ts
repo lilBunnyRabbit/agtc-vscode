@@ -8,7 +8,6 @@ import { type Session, type Tool, isTool, workDir } from "../model/session";
 import type { StateStore } from "../model/state-store";
 import { reviewerFor } from "../model/tools";
 import { baseBranch, checkoutName } from "../sources/git";
-import { openAgentTerminal } from "../spawn/terminal";
 import { pasteInto } from "./paste";
 import { reviewerCommand, writeReviewPrompt } from "./prompt";
 import { reportMessage, reviewerReport } from "./report";
@@ -19,6 +18,7 @@ export interface ReviewContext {
   state: StateStore;
   terminalOf(session: Session): Terminal | undefined;
   refresh(): Promise<void>;
+  launch(dir: string, command: string, name: string, beside?: Terminal): Promise<Terminal | undefined>;
 }
 
 const say = (text: string): void => void window.setStatusBarMessage(`agtc: ${text}`, 5000);
@@ -87,10 +87,9 @@ async function launchReviewer(ctx: ReviewContext, session: Session, dir: string,
   const id = randomUUID();
   const base = session.changes?.base ?? (await baseBranch(dir));
   const promptPath = writeReviewPrompt(id, { spec, base });
-  const terminal = openAgentTerminal(dir, reviewerCommand(tool, id, promptPath), `${await checkoutName(dir)} review`, ctx.terminalOf(session));
-  ctx.state.rememberReview({ id: tool === "claude" ? id : undefined, terminal: terminalId(terminal), of: session.id, at: Date.now() });
+  const terminal = await ctx.launch(dir, reviewerCommand(tool, id, promptPath), `${await checkoutName(dir)} review`, ctx.terminalOf(session));
+  ctx.state.rememberReview({ id: tool === "claude" ? id : undefined, terminal: terminal ? terminalId(terminal) : "", of: session.id, at: Date.now() });
   say(`started ${tool} to review "${short(session)}"`);
-  setTimeout(() => void ctx.refresh(), 1500);
 }
 
 /** `x`: only reviewers, nothing else started here is read-only. */
