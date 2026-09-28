@@ -77,10 +77,15 @@ body {
   grid-template-columns: 14px 1fr auto;
   grid-template-rows: auto auto;
   column-gap: 8px;
-  padding: 4px 10px 5px 8px;
-  border-left: 3px solid var(--status);
+  padding: 5px 10px 6px 8px;
+  border-left: 3px solid transparent;
   cursor: pointer;
   user-select: none;
+}
+
+.row.wants {
+  border-left-color: var(--status);
+  background: color-mix(in srgb, var(--status) 7%, transparent);
 }
 
 .row:hover {
@@ -101,7 +106,12 @@ body {
 }
 
 .row.inactive {
-  opacity: 0.6;
+  opacity: 0.55;
+}
+
+.row.idle .title {
+  color: var(--vscode-foreground);
+  opacity: 0.85;
 }
 
 .digit {
@@ -125,8 +135,12 @@ body {
   text-overflow: ellipsis;
 }
 
-.row.wants .title {
+.row[data-status="needs input"] .title {
   color: var(--status);
+}
+
+.title {
+  font-weight: 500;
 }
 
 .title .glyph {

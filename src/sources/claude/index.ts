@@ -6,12 +6,11 @@ import type { SourceOptions, Surfaces } from "../types";
 import { type ClaudeHistory, readClaudeHistory } from "./history";
 import { type ClaudeRegistration, readClaudeRegistry } from "./registry";
 import { claudeSubagents } from "./subagents";
-import { type TranscriptActivity, transcriptActivity } from "./transcript";
+import { type TranscriptActivity, customTitle, transcriptActivity } from "./transcript";
 
 /** Claude animates one of these at the start of the tab title while it works. */
 const SPINNER_GLYPHS = /^[◐◑◒◓◴◵◶◷⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/;
 
-const stripTitleGlyph = (title: string) => title.replace(/^[^\p{L}\p{N}]+\s*/u, "").trim();
 
 export async function claudeSessions({ surfaces, sinceMs }: SourceOptions): Promise<SessionInput[]> {
   const registry = readClaudeRegistry();
@@ -74,11 +73,7 @@ function liveSession(
   const spinning = tabTitle ? SPINNER_GLYPHS.test(tabTitle) : false;
   const status: Status = registration.waitingFor ? "needs input" : registration.status === "busy" || spinning ? "busy" : "idle";
   const statusAt = registration.statusUpdatedAt ?? registration.updatedAt ?? registration.startedAt ?? Date.now();
-  const title =
-    (tabTitle && stripTitleGlyph(tabTitle)) ||
-    (history?.firstPrompt && collapse(history.firstPrompt, TITLE_MAX_LENGTH)) ||
-    registration.name ||
-    registration.sessionId.slice(0, 8);
+  const title = registration.name || (history?.firstPrompt && collapse(history.firstPrompt, TITLE_MAX_LENGTH)) || registration.sessionId.slice(0, 8);
 
   return {
     tool: "claude",
@@ -111,7 +106,7 @@ function inactiveSession(id: string, history: ClaudeHistory, git: GitInfo): Sess
     cwd: history.project,
     ...git,
     roots: git.root ? [git.root] : [],
-    title: collapse(history.firstPrompt, TITLE_MAX_LENGTH) || id.slice(0, 8),
+    title: customTitle(id, history.project) || collapse(history.firstPrompt, TITLE_MAX_LENGTH) || id.slice(0, 8),
     firstPrompt: history.firstPrompt,
     lastPrompt: history.lastPrompt,
     prompts: history.prompts,

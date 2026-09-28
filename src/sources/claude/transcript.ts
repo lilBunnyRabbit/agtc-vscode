@@ -94,6 +94,30 @@ function pathTokens(value: unknown, depth: number): string[] {
   return Object.values(value).flatMap((v) => pathTokens(v, depth + 1));
 }
 
+const titles = new Map<string, { size: number; title?: string }>();
+
+/** The name given with /rename or derived by Claude, written as a `custom-title` line anywhere in the transcript. Read once per file size. */
+export function customTitle(sessionId: string, cwd: string): string | undefined {
+  const path = transcriptPath(sessionId, cwd);
+  if (!path) return undefined;
+  let size: number;
+  try {
+    size = statSync(path).size;
+  } catch {
+    return undefined;
+  }
+  const cached = titles.get(sessionId);
+  if (cached?.size === size) return cached.title;
+  let title: string | undefined;
+  for (const line of readLinesFrom(path, 0).lines) {
+    if (!line.includes('"custom-title"')) continue;
+    const entry = parseJsonLine<{ type?: string; customTitle?: string }>(line);
+    if (entry?.type === "custom-title" && entry.customTitle) title = entry.customTitle;
+  }
+  titles.set(sessionId, { size, title });
+  return title;
+}
+
 /**
  * The assistant's last complete message: its text blocks since its last tool call. Nothing
  * while a turn is under way or after a prompt it has not answered yet.
