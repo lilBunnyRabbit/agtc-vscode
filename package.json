@@ -1,0 +1,155 @@
+{
+  "name": "agtc",
+  "displayName": "Agent Traffic Control",
+  "description": "Every Claude Code and Codex session on your machine, in the sidebar.",
+  "version": "0.1.0",
+  "publisher": "lilbunnyrabbit",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lilBunnyRabbit/agtc-vscode"
+  },
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agtc",
+          "title": "Agent Traffic Control",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "agtc": [
+        {
+          "id": "agtc.sessions",
+          "name": "Sessions"
+        },
+        {
+          "id": "agtc.detail",
+          "name": "Detail"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "agtc.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.toggleInactive",
+        "title": "Show Inactive Sessions",
+        "icon": "$(history)",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.markAllSeen",
+        "title": "Mark All as Seen",
+        "icon": "$(check-all)",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.markSeen",
+        "title": "Mark as Seen",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.copyResume",
+        "title": "Copy Resume Command",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.openFolder",
+        "title": "Open Checkout in New Window",
+        "category": "agtc"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "agtc.refresh",
+          "when": "view == agtc.sessions",
+          "group": "navigation@3"
+        },
+        {
+          "command": "agtc.toggleInactive",
+          "when": "view == agtc.sessions",
+          "group": "navigation@2"
+        },
+        {
+          "command": "agtc.markAllSeen",
+          "when": "view == agtc.sessions",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "agtc.markSeen",
+          "when": "view == agtc.sessions && viewItem == session",
+          "group": "1_session@1"
+        },
+        {
+          "command": "agtc.openFolder",
+          "when": "view == agtc.sessions && viewItem == session",
+          "group": "1_session@2"
+        },
+        {
+          "command": "agtc.copyResume",
+          "when": "view == agtc.sessions && viewItem == session",
+          "group": "1_session@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "agtc.markSeen",
+          "when": "false"
+        },
+        {
+          "command": "agtc.copyResume",
+          "when": "false"
+        },
+        {
+          "command": "agtc.openFolder",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Agent Traffic Control",
+      "properties": {
+        "agtc.days": {
+          "type": "number",
+          "default": 7,
+          "description": "How many days back inactive sessions are listed."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node22 --sourcemap",
+    "watch": "bun run build -- --watch",
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "bun test",
+    "package": "bunx @vscode/vsce package --no-dependencies",
+    "vscode:prepublish": "bun run build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/vscode": "^1.106.1",
+    "bun-types": "^1.4.2",
+    "esbuild": "^0.27.2",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "watch",
+      "type": "shell",
+      "command": "bun run watch",
+      "isBackground": true,
+      "presentation": { "reveal": "never" },
+      "problemMatcher": {
+        "owner": "esbuild",
+        "fileLocation": "relative",
+        "pattern": {
+          "regexp": "^✘ \\[ERROR\\] (.*)\\n\\s+(.*):(\\d+):(\\d+):$",
+          "message": 1,
+          "file": 2,
+          "line": 3,
+          "column": 4
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "\\[watch\\] build started",
+          "endsPattern": "\\[watch\\] build finished"
+        }
+      }
+    }
+  ]
+}
