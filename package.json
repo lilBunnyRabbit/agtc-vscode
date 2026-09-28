@@ -32,12 +32,9 @@
     "views": {
       "agtc": [
         {
+          "type": "webview",
           "id": "agtc.sessions",
           "name": "Sessions"
-        },
-        {
-          "id": "agtc.detail",
-          "name": "Detail"
         }
       ]
     },
@@ -97,19 +94,67 @@
       }
     ],
     "keybindings": [
-      { "command": "agtc.next", "key": "cmd+alt+j" },
-      { "command": "agtc.previous", "key": "cmd+alt+k" },
-      { "command": "agtc.jumpWaiting", "key": "cmd+alt+n" },
-      { "command": "agtc.sessions.focus", "key": "cmd+alt+a" },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+1", "args": 1 },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+2", "args": 2 },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+3", "args": 3 },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+4", "args": 4 },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+5", "args": 5 },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+6", "args": 6 },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+7", "args": 7 },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+8", "args": 8 },
-      { "command": "agtc.jumpDigit", "key": "cmd+alt+9", "args": 9 }
+      {
+        "command": "agtc.next",
+        "key": "cmd+alt+j"
+      },
+      {
+        "command": "agtc.previous",
+        "key": "cmd+alt+k"
+      },
+      {
+        "command": "agtc.jumpWaiting",
+        "key": "cmd+alt+n"
+      },
+      {
+        "command": "agtc.sessions.focus",
+        "key": "cmd+alt+a"
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+1",
+        "args": 1
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+2",
+        "args": 2
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+3",
+        "args": 3
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+4",
+        "args": 4
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+5",
+        "args": 5
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+6",
+        "args": 6
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+7",
+        "args": 7
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+8",
+        "args": 8
+      },
+      {
+        "command": "agtc.jumpDigit",
+        "key": "cmd+alt+9",
+        "args": 9
+      }
     ],
     "menus": {
       "view/title": [
@@ -129,23 +174,6 @@
           "group": "navigation@1"
         }
       ],
-      "view/item/context": [
-        {
-          "command": "agtc.markSeen",
-          "when": "view == agtc.sessions && viewItem == session",
-          "group": "1_session@1"
-        },
-        {
-          "command": "agtc.openFolder",
-          "when": "view == agtc.sessions && viewItem == session",
-          "group": "1_session@2"
-        },
-        {
-          "command": "agtc.copyResume",
-          "when": "view == agtc.sessions && viewItem == session",
-          "group": "1_session@3"
-        }
-      ],
       "commandPalette": [
         {
           "command": "agtc.markSeen",
@@ -161,6 +189,14 @@
         },
         {
           "command": "agtc.jump",
+          "when": "false"
+        },
+        {
+          "command": "agtc.jumpDigit",
+          "when": "false"
+        },
+        {
+          "command": "agtc.openDiff",
           "when": "false"
         }
       ]
@@ -182,7 +218,8 @@
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "test": "bun test",
     "package": "bunx @vscode/vsce package --no-dependencies",
-    "vscode:prepublish": "bun run build"
+    "vscode:prepublish": "bun run build",
+    "dev": "bun run build && \"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code\" --extensionDevelopmentPath=\"$PWD\" --new-window"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

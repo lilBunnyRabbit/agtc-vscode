@@ -1,0 +1,264 @@
+:root {
+  --input: var(--vscode-charts-red);
+  --done: var(--vscode-charts-green);
+  --busy: var(--vscode-charts-blue);
+  --idle: var(--vscode-charts-yellow);
+  --inactive: var(--vscode-disabledForeground);
+  --dim: var(--vscode-descriptionForeground);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+#list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  outline: none;
+  padding: 4px 0;
+}
+
+#detail {
+  flex: 0 0 auto;
+  max-height: 42%;
+  overflow-y: auto;
+  border-top: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-widget-border));
+  padding: 6px 10px 8px;
+}
+
+#detail:empty {
+  display: none;
+}
+
+.empty {
+  padding: 12px;
+  color: var(--dim);
+}
+
+.group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85em;
+  color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+}
+
+.group .count {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--dim);
+  margin-left: auto;
+}
+
+.group .count.hot {
+  color: var(--input);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  padding: 4px 10px 5px 8px;
+  border-left: 3px solid var(--status);
+  cursor: pointer;
+  user-select: none;
+}
+
+.row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.row.selected {
+  background: var(--vscode-list-inactiveSelectionBackground);
+}
+
+#list:focus .row.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground));
+}
+
+.row.review {
+  padding-left: 22px;
+}
+
+.row.inactive {
+  opacity: 0.6;
+}
+
+.digit {
+  grid-row: 1 / span 2;
+  align-self: start;
+  padding-top: 1px;
+  text-align: center;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.row.wants .digit {
+  color: var(--status);
+  font-weight: 700;
+}
+
+.title {
+  grid-column: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row.wants .title {
+  color: var(--status);
+}
+
+.title .glyph {
+  color: var(--dim);
+  margin-right: 4px;
+}
+
+.age {
+  grid-column: 3;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta {
+  grid-column: 2 / span 2;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.9em;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.pill {
+  color: var(--status);
+}
+
+.pill::before {
+  content: "●";
+  margin-right: 4px;
+  font-size: 0.75em;
+  vertical-align: 1px;
+}
+
+.row.busy .pill::before {
+  content: "◐";
+  display: inline-block;
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.branch {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.external {
+  margin-left: auto;
+}
+
+.verdict.ready {
+  color: var(--done);
+}
+
+.verdict.notready {
+  color: var(--input);
+}
+
+.row[data-status="needs input"] {
+  --status: var(--input);
+}
+.row[data-status="done"] {
+  --status: var(--done);
+}
+.row[data-status="busy"] {
+  --status: var(--busy);
+}
+.row[data-status="idle"] {
+  --status: var(--idle);
+}
+.row[data-status="inactive"] {
+  --status: var(--inactive);
+}
+
+#detail h3 {
+  margin: 0 0 6px;
+  font-size: 1em;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.item .icon {
+  flex: 0 0 14px;
+  text-align: center;
+  color: var(--dim);
+}
+
+.item .label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item .desc {
+  color: var(--dim);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.item.child {
+  padding-left: 20px;
+}
+
+.item.link {
+  cursor: pointer;
+}
+
+.item.link:hover .label {
+  text-decoration: underline;
+}
+
+.item.ready .icon {
+  color: var(--done);
+}
+
+.item.notready .icon,
+.item.wait .icon {
+  color: var(--input);
+}

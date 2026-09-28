@@ -1,39 +1,49 @@
-import { type OutputChannel, StatusBarAlignment, type Terminal, type TreeView, window, workspace } from "vscode";
+import { type OutputChannel, StatusBarAlignment, type Terminal, Uri, commands, window, workspace } from "vscode";
 import { openFolderHere } from "./folder";
 import { SECOND } from "./lib/time";
+import { linkedTerminals } from "./link/terminals";
 import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
 import { collectSessions } from "./model/sessions";
 import { StateStore } from "./model/state-store";
 import { STATE_FILE } from "./paths";
-import { linkedTerminals } from "./link/terminals";
-import { DetailProvider } from "./views/detail";
-import { type Node, SessionsProvider } from "./views/sessions";
+import { buildDetail, buildGroups } from "./views/model";
+import { SessionsPanel } from "./views/panel";
 
 const POLL_VISIBLE_MS = 2 * SECOND;
 const POLL_HIDDEN_MS = 10 * SECOND;
 
 export class App {
   readonly state = StateStore.load(STATE_FILE);
-  readonly sessions = new SessionsProvider();
-  readonly detail = new DetailProvider();
-  readonly tree: TreeView<Node>;
-  readonly detailView: TreeView<unknown>;
+  readonly panel: SessionsPanel;
   private readonly status = window.createStatusBarItem(StatusBarAlignment.Left, 50);
   private terminals = new Map<string, Terminal>();
   private list: Session[] = [];
   private selectedId: string | undefined;
+  private showInactive = false;
   private timer: NodeJS.Timeout | undefined;
   private disposed = false;
 
-  constructor(private readonly output: OutputChannel) {
-    this.tree = window.createTreeView("agtc.sessions", { treeDataProvider: this.sessions });
-    this.detailView = window.createTreeView("agtc.detail", { treeDataProvider: this.detail });
+  constructor(
+    private readonly output: OutputChannel,
+    extensionUri: Uri,
+  ) {
+    this.panel = new SessionsPanel(extensionUri);
     this.status.command = "agtc.jumpWaiting";
-    this.tree.onDidChangeSelection((event) => {
-      const node = event.selection[0];
-      if (node?.kind === "session") this.select(node.session.id, false);
+    this.panel.onDidChangeVisibility(() => this.schedule());
+    this.panel.onMessage((message) => {
+      switch (message.type) {
+        case "select":
+          return this.select(message.id, false);
+        case "jump": {
+          const session = this.byId(message.id);
+          return session && void this.jump(session);
+        }
+        case "openFile":
+          return void commands.executeCommand("agtc.openDiff", message.file);
+        case "command":
+          return void commands.executeCommand(message.command, message.id);
+      }
     });
-    this.tree.onDidChangeVisibility(() => this.schedule());
     window.onDidChangeActiveTerminal((terminal) => {
       const session = terminal && this.sessionInTerminal(terminal);
       if (session) this.select(session.id, true);
@@ -45,8 +55,6 @@ export class App {
     this.disposed = true;
     clearTimeout(this.timer);
     this.status.dispose();
-    this.tree.dispose();
-    this.detailView.dispose();
   }
 
   get selected(): Session | undefined {
@@ -57,8 +65,8 @@ export class App {
     return this.list.find((s) => s.id === id);
   }
 
-  sessionOf(node?: Node): Session | undefined {
-    return node?.kind === "session" ? node.session : this.selected;
+  sessionOf(id?: string): Session | undefined {
+    return id ? this.byId(id) : this.selected;
   }
 
   get inWindow(): Session[] {
@@ -80,12 +88,21 @@ export class App {
       const { surfaces, byId } = await linkedTerminals();
       this.terminals = byId;
       this.list = await collectSessions({ days, state: this.state, surfaces });
-      this.sessions.set(this.list);
-      this.detail.show(this.selected);
-      this.showWaiting();
+      this.render();
     } catch (error) {
       this.output.appendLine(`refresh failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
     }
+  }
+
+  private render(): void {
+    const selected = this.selected;
+    this.panel.set({
+      groups: buildGroups(this.list, this.showInactive),
+      detail: selected ? buildDetail(selected) : undefined,
+      selectedId: this.selectedId,
+      showInactive: this.showInactive,
+    });
+    this.showWaiting();
   }
 
   private schedule(): void {
@@ -94,24 +111,28 @@ export class App {
     this.timer = setTimeout(async () => {
       await this.refresh();
       this.schedule();
-    }, this.tree.visible ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
+    }, this.panel.visible ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
   }
 
   private showWaiting(): void {
     const waiting = this.list.filter((s) => s.status === "needs input" || s.status === "done");
     const input = waiting.filter((s) => s.status === "needs input").length;
-    this.tree.badge = waiting.length ? { value: waiting.length, tooltip: `${input} need input, ${waiting.length - input} done` } : undefined;
+    this.panel.badge(waiting.length, `${input} need input, ${waiting.length - input} done`);
     if (!waiting.length) return this.status.hide();
     this.status.text = `$(bell-dot) ${waiting.length} waiting`;
     this.status.tooltip = "agtc: jump to the session that has waited longest";
     this.status.show();
   }
 
+  toggleInactive(): void {
+    this.showInactive = !this.showInactive;
+    this.render();
+  }
+
   select(id: string, reveal: boolean): void {
     this.selectedId = id;
-    this.detail.show(this.selected);
-    const node = this.sessions.nodeOf(id);
-    if (reveal && node) void this.tree.reveal(node, { select: true, focus: false });
+    this.render();
+    if (reveal) this.panel.select(id);
   }
 
   async jump(session: Session): Promise<void> {

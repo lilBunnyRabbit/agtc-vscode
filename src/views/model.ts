@@ -1,0 +1,140 @@
+import { join } from "node:path";
+import { collapse, plural, tildify } from "../lib/text";
+import { relativeAge } from "../lib/time";
+import { type Session, type Status, workDir } from "../model/session";
+import { HOME } from "../paths";
+
+export interface Row {
+  id: string;
+  digit?: number;
+  tool: Session["tool"];
+  worktree: boolean;
+  title: string;
+  status: Status;
+  age: string;
+  branch?: string;
+  verdict?: { ready: boolean; text: string };
+  external: boolean;
+  review: boolean;
+  waitingFor?: string;
+}
+
+export interface Group {
+  repo: string;
+  description: string;
+  rows: Row[];
+}
+
+export interface DetailItem {
+  icon: string;
+  label: string;
+  description?: string;
+  tooltip?: string;
+  file?: string;
+  children?: DetailItem[];
+}
+
+export interface Detail {
+  id: string;
+  title: string;
+  items: DetailItem[];
+}
+
+export interface ViewState {
+  groups: Group[];
+  detail?: Detail;
+  selectedId?: string;
+  showInactive: boolean;
+}
+
+const MAX_DIGIT = 9;
+const PROMPT_WIDTH = 160;
+
+export function digitsOf(sessions: Session[]): Map<string, number> {
+  return new Map(
+    sessions
+      .filter((s) => s.terminal && s.status !== "inactive")
+      .slice(0, MAX_DIGIT)
+      .map((s, i) => [s.id, i + 1]),
+  );
+}
+
+export function buildGroups(sessions: Session[], showInactive: boolean, now = Date.now()): Group[] {
+  const digits = digitsOf(sessions);
+  const listed = showInactive ? sessions : sessions.filter((s) => s.status !== "inactive");
+  const byRepo = new Map<string, Session[]>();
+  for (const session of listed) byRepo.set(session.repo, [...(byRepo.get(session.repo) ?? []), session]);
+  return [...byRepo].map(([repo, group]) => ({
+    repo,
+    description: repoDescription(group),
+    rows: group.map((session) => rowOf(session, group, digits.get(session.id), now)),
+  }));
+}
+
+function rowOf(session: Session, group: Session[], digit: number | undefined, now: number): Row {
+  return {
+    id: session.id,
+    digit,
+    tool: session.tool,
+    worktree: !!session.worktree,
+    title: session.title,
+    status: session.status,
+    age: relativeAge(session.since, now),
+    branch: session.branch,
+    verdict: session.verdict,
+    external: !session.terminal && session.status !== "inactive",
+    review: !!session.reviewOf && group.some((s) => s.id === session.reviewOf),
+    waitingFor: session.waitingFor,
+  };
+}
+
+export function repoDescription(sessions: Session[]): string {
+  const waiting = sessions.filter((s) => s.status === "needs input").length;
+  const done = sessions.filter((s) => s.status === "done").length;
+  const parts = [];
+  if (waiting) parts.push(`${waiting} input`);
+  if (done) parts.push(`${done} done`);
+  parts.push(plural(sessions.length, "session", "sessions"));
+  return parts.join(" · ");
+}
+
+export function buildDetail(session: Session, now = Date.now()): Detail {
+  const dir = workDir(session);
+  const items: DetailItem[] = [{ icon: "folder", label: tildify(dir, HOME), description: session.worktree ? `worktree ${session.worktree}` : undefined }];
+  if (session.branch) items.push({ icon: "branch", label: session.branch });
+  if (session.roots.length > 1) {
+    items.push({ icon: "roots", label: "also touched", children: session.roots.slice(1).map((root) => ({ icon: "folder", label: tildify(root, HOME) })) });
+  }
+  if (session.changes) items.push(changesItem(session, dir));
+  if (session.waitingFor) items.push({ icon: "wait", label: session.waitingFor });
+  if (session.verdict) items.push({ icon: session.verdict.ready ? "ready" : "notready", label: session.verdict.text });
+  if (session.lastPrompt) {
+    const earlier = session.prompts.slice(0, -1).slice(-2).reverse();
+    items.push({
+      icon: "prompt",
+      label: collapse(session.lastPrompt, PROMPT_WIDTH),
+      description: session.lastPromptAt ? relativeAge(session.lastPromptAt, now) : undefined,
+      tooltip: session.lastPrompt,
+      children: earlier.map((prompt) => ({ icon: "prompt", label: collapse(prompt, PROMPT_WIDTH), tooltip: prompt })),
+    });
+  }
+  if (session.subagents?.length) {
+    items.push({
+      icon: "agents",
+      label: plural(session.subagents.length, "subagent", "subagents"),
+      children: session.subagents.map((agent) => ({
+        icon: agent.status === "busy" ? "busy" : "done",
+        label: collapse(agent.description, PROMPT_WIDTH),
+        description: [agent.kind, agent.status, relativeAge(agent.since, now)].filter(Boolean).join(" · "),
+      })),
+    });
+  }
+  return { id: session.id, title: session.title, items };
+}
+
+function changesItem(session: Session, dir: string): DetailItem {
+  const { paths, insertions, deletions, base, ahead } = session.changes!;
+  const summary = paths.length ? `${plural(paths.length, "file", "files")} +${insertions} −${deletions}` : "clean";
+  const description = base && ahead !== undefined ? `${ahead} ahead of ${base}` : undefined;
+  return { icon: "diff", label: summary, description, children: paths.map((path) => ({ icon: "file", label: path, file: join(dir, path) })) };
+}
