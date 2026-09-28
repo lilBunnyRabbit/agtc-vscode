@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { collapse } from "../../lib/text";
 import { type SessionInput, type Status, TITLE_MAX_LENGTH } from "../../model/session";
 import { type GitInfo, gitInfo, repoCheckouts } from "../git";
@@ -6,7 +7,7 @@ import type { SourceOptions, Surfaces } from "../types";
 import { type ClaudeHistory, readClaudeHistory } from "./history";
 import { type ClaudeRegistration, readClaudeRegistry } from "./registry";
 import { claudeSubagents } from "./subagents";
-import { type TranscriptActivity, customTitle, hasTranscript, transcriptActivity } from "./transcript";
+import { type TranscriptActivity, customTitle, hasTranscript, lastCwd, transcriptActivity } from "./transcript";
 
 /** Claude animates one of these at the start of the tab title while it works. */
 const stripTitleGlyph = (title: string) => title.replace(/^[^\p{L}\p{N}]+\s*/u, "").trim();
@@ -24,7 +25,7 @@ export async function claudeSessions({ surfaces, sinceMs }: SourceOptions): Prom
   const [processes, liveWork, inactiveGit] = await Promise.all([
     processInfo(registry.map((r) => r.pid)),
     Promise.all(registry.map((r) => workCheckout(r.cwd, transcriptActivity(r.sessionId, r.cwd)))),
-    Promise.all(inactive.map(([, h]) => gitInfo(h.project))),
+    Promise.all(inactive.map(([id, h]) => gitInfo(endedIn(id, h.project)))),
   ]);
 
   const live = registry.map((registration, i) =>
@@ -104,12 +105,18 @@ function liveSession(
   };
 }
 
+/** The directory the session stopped in, while it still exists; Claude resumes a session from any checkout of its repository. */
+function endedIn(id: string, project: string): string {
+  const last = lastCwd(id, project);
+  return last && existsSync(last) ? last : project;
+}
+
 function inactiveSession(id: string, history: ClaudeHistory, git: GitInfo): SessionInput {
   return {
     tool: "claude",
     id,
     status: "inactive",
-    cwd: history.project,
+    cwd: endedIn(id, history.project),
     ...git,
     roots: git.root ? [git.root] : [],
     title: customTitle(id, history.project) || collapse(history.firstPrompt, TITLE_MAX_LENGTH) || id.slice(0, 8),

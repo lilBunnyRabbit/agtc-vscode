@@ -19,6 +19,7 @@
   };
   let state = { groups: [], showInactive: false, actions: {} };
   let selectedId;
+  let painted = "";
 
   const esc = (text) => String(text ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -161,6 +162,10 @@
   window.addEventListener("message", (event) => {
     const message = event.data;
     if (message.type === "state") {
+      const next = JSON.stringify(message.state);
+      if (next === painted) return;
+      painted = next;
+      vscode.setState(message.state);
       state = message.state;
       if (message.state.selectedId) selectedId = message.state.selectedId;
       if (selectedId && !rowIds().includes(selectedId)) selectedId = undefined;
@@ -169,6 +174,13 @@
       select(message.id, false);
     }
   });
+
+  const restored = vscode.getState();
+  if (restored) {
+    state = restored;
+    selectedId = restored.selectedId;
+    render();
+  }
 
   vscode.postMessage({ type: "ready" });
 })();

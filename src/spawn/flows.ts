@@ -11,6 +11,8 @@ export interface SpawnContext {
   sessions: Session[];
   terminalOf(session: Session): { sendText(text: string): void; show(): void } | undefined;
   refresh(): Promise<void>;
+  /** False when the folder is already the window's. */
+  openFolder(dir: string): Promise<boolean>;
 }
 
 const say = (text: string): void => void window.setStatusBarMessage(`agtc: ${text}`, 4000);
@@ -63,14 +65,14 @@ export async function moveToWorktree(ctx: SpawnContext, session: Session): Promi
   if (dir) await startAgent(ctx, "codex", dir, session.lastPrompt ? writeTask(session.lastPrompt) : undefined);
 }
 
-/** `R`: a finished session again, in the directory it started in: Claude finds a session only from there. */
+/** `R`: a finished session again, in the directory it stopped in. */
 export async function resumeAgent(ctx: SpawnContext, session: Session): Promise<void> {
   if (session.status !== "inactive") return say("still running");
   const dir = session.cwd;
   if (!existsSync(dir)) return say(`directory is gone: ${tildify(dir, HOME)}`);
   openAgentTerminal(dir, resumeInvocation(session), await checkoutName(dir));
   say(`resumed ${session.tool} in ${tildify(dir, HOME)}`);
-  setTimeout(() => void ctx.refresh(), 1500);
+  if (!(await ctx.openFolder(workDir(session)))) setTimeout(() => void ctx.refresh(), 1500);
 }
 
 /** `⌘⌥T`: tool, checkout, worktree or not, task. */

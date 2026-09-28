@@ -144,6 +144,29 @@ export function lastAssistantMessage(sessionId: string, cwd: string): string | u
   return text || undefined;
 }
 
+const lastCwds = new Map<string, { size: number; cwd?: string }>();
+
+/** Where the session was when it stopped: it may have moved into a worktree after it started. Read once per file size. */
+export function lastCwd(sessionId: string, cwd: string): string | undefined {
+  const path = transcriptPath(sessionId, cwd);
+  if (!path) return undefined;
+  let size: number;
+  try {
+    size = statSync(path).size;
+  } catch {
+    return undefined;
+  }
+  const cached = lastCwds.get(sessionId);
+  if (cached?.size === size) return cached.cwd;
+  let found: string | undefined;
+  for (const line of readTailLines(path, REPORT_TAIL_BYTES).reverse()) {
+    found = parseJsonLine<TranscriptLine>(line)?.cwd;
+    if (found) break;
+  }
+  lastCwds.set(sessionId, { size, cwd: found });
+  return found;
+}
+
 const missingAt = new Map<string, number>();
 const MISSING_RECHECK_MS = 60_000;
 

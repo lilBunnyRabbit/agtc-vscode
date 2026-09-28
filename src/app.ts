@@ -210,7 +210,11 @@ export class App {
     if (terminal) terminal.show();
     else if (session.status !== "inactive") window.setStatusBarMessage(`${session.title}: runs outside this window`, 3 * SECOND);
     this.state.mark(session.id);
-    if (!(await openFolderHere(workDir(session), (from, to) => this.memory.move(from, to)))) await this.refresh();
+    if (!(await this.openFolder(workDir(session)))) await this.refresh();
+  }
+
+  openFolder(dir: string): Promise<boolean> {
+    return openFolderHere(dir, (from, to) => this.memory.move(from, to));
   }
 
   jumpDigit(digit: number): Promise<void> | undefined {

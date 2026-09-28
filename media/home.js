@@ -4,6 +4,7 @@
   const $ = (id) => document.getElementById(id);
   let state = { inactive: [], stats: { today: {}, week: {}, running: 0, repos: [] }, checkouts: [], actions: {} };
   let tool = "claude";
+  let painted = "";
   let where = "here";
   let picked;
   const expanded = new Set();
@@ -149,6 +150,10 @@
   window.addEventListener("message", (event) => {
     const message = event.data;
     if (message.type === "state") {
+      const next = JSON.stringify(message.state);
+      if (next === painted) return;
+      painted = next;
+      vscode.setState(message.state);
       state = message.state;
       render();
     } else if (message.type === "picked") {
@@ -160,6 +165,12 @@
       $("task").focus();
     }
   });
+
+  const restored = vscode.getState();
+  if (restored) {
+    state = restored;
+    render();
+  }
 
   vscode.postMessage({ type: "ready" });
   $("task").focus();
