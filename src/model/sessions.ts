@@ -18,13 +18,22 @@ export async function collectSessions({ days, state, surfaces = new Map() }: Col
   const sinceMs = Date.now() - days * DAY;
   const [claude, codex] = await Promise.all([claudeSessions({ surfaces, sinceMs }), codexSessions({ surfaces, sinceMs })]);
   const withChanges = await Promise.all([...claude, ...codex].map(attachChanges));
-  const linked = linkReviews(withChanges, state);
+  const linked = linkReviews(withChanges.map((s) => withName(s, state)), state);
   return sortSessions(linked.map((session) => withVerdict(finalize(resolveDone(onScreen(session, surfaces), state)))));
 }
 
 async function attachChanges(session: SessionInput): Promise<SessionInput> {
   if (session.status === "inactive" || !session.root) return session;
   return { ...session, changes: await gitChanges(session.root) };
+}
+
+function withName(session: SessionInput, state: StateStore): SessionInput {
+  if (session.name) {
+    state.rememberTitle(session.id, session.name);
+    return session;
+  }
+  const remembered = state.titleOf(session.id);
+  return remembered ? { ...session, title: remembered } : session;
 }
 
 function linkReviews(sessions: SessionInput[], state: StateStore): SessionInput[] {

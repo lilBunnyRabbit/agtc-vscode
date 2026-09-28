@@ -1,5 +1,5 @@
 import { type Terminal, window } from "vscode";
-import { run } from "../lib/shell";
+import { exec, run } from "../lib/shell";
 import type { Surfaces } from "../sources/types";
 
 export interface LinkedTerminals {
@@ -42,7 +42,7 @@ export async function linkedTerminals(): Promise<LinkedTerminals> {
     }
   }
   const focused = window.state.focused;
-  const surfaces: Surfaces = new Map();
+  const surfaces: Surfaces = await tmuxTitles();
   const byId = new Map<string, Terminal>();
   terminals.forEach((terminal, i) => {
     const pid = pidOf[i];
@@ -50,7 +50,25 @@ export async function linkedTerminals(): Promise<LinkedTerminals> {
     if (!tty) return;
     const id = terminalId(terminal);
     byId.set(id, terminal);
-    surfaces.set(tty, { title: terminal.name, viewed: focused && window.activeTerminal === terminal, terminal: id });
+    surfaces.set(tty, { title: agentTitle(terminal), viewed: focused && window.activeTerminal === terminal, terminal: id });
   });
   return { surfaces, byId };
+}
+
+/** `name` follows the title the agent sets; until then it is the name the terminal was created with, which says nothing about the session. */
+function agentTitle(terminal: Terminal): string {
+  const created = "name" in terminal.creationOptions ? terminal.creationOptions.name : undefined;
+  return terminal.name === created ? "" : terminal.name;
+}
+
+/** Sessions in tmux elsewhere still name themselves through the pane title; read for the name only, never as a terminal of ours. */
+async function tmuxTitles(): Promise<Surfaces> {
+  const surfaces: Surfaces = new Map();
+  const { ok, output } = await exec(["tmux", "list-panes", "-a", "-F", "#{pane_tty}\t#{pane_title}"]);
+  if (!ok) return surfaces;
+  for (const line of output.split("\n")) {
+    const [tty, ...title] = line.split("\t");
+    if (tty) surfaces.set(tty.replace(/^\/dev\//, ""), { title: title.join("\t"), viewed: false });
+  }
+  return surfaces;
 }

@@ -9,6 +9,8 @@ export interface ClaudeRegistration {
   sessionId: string;
   cwd: string;
   name?: string;
+  /** "user" after /rename; "derived" is repo plus id, no better than the prompt. */
+  nameSource?: string;
   status?: "idle" | "busy";
   /** Set while a permission prompt or dialog blocks the session. */
   waitingFor?: string;

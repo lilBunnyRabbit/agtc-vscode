@@ -46,3 +46,10 @@ describe("StateStore", () => {
     expect(store.reviewLinkOf({ id: "r", terminal: "t9", startedAt: 21_000 })?.of).toBe("two");
   });
 });
+
+test("titles are remembered per session", () => {
+  const store = StateStore.load(join(dir, "titles.json"));
+  store.rememberTitle("a", "Landing perf");
+  expect(store.titleOf("a")).toBe("Landing perf");
+  expect(StateStore.load(join(dir, "titles.json")).titleOf("a")).toBe("Landing perf");
+});

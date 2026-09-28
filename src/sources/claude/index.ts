@@ -9,6 +9,9 @@ import { claudeSubagents } from "./subagents";
 import { type TranscriptActivity, customTitle, transcriptActivity } from "./transcript";
 
 /** Claude animates one of these at the start of the tab title while it works. */
+const stripTitleGlyph = (title: string) => title.replace(/^[^\p{L}\p{N}]+\s*/u, "").trim();
+/** The title before Claude has named the session. */
+const DEFAULT_TITLE = "Claude Code";
 const SPINNER_GLYPHS = /^[◐◑◒◓◴◵◶◷⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/;
 
 
@@ -73,7 +76,9 @@ function liveSession(
   const spinning = tabTitle ? SPINNER_GLYPHS.test(tabTitle) : false;
   const status: Status = registration.waitingFor ? "needs input" : registration.status === "busy" || spinning ? "busy" : "idle";
   const statusAt = registration.statusUpdatedAt ?? registration.updatedAt ?? registration.startedAt ?? Date.now();
-  const title = registration.name || (history?.firstPrompt && collapse(history.firstPrompt, TITLE_MAX_LENGTH)) || registration.sessionId.slice(0, 8);
+  const named = tabTitle ? stripTitleGlyph(tabTitle) : "";
+  const name = (named !== DEFAULT_TITLE && named) || (registration.nameSource === "user" ? registration.name : undefined) || undefined;
+  const title = name || (history?.firstPrompt && collapse(history.firstPrompt, TITLE_MAX_LENGTH)) || registration.sessionId.slice(0, 8);
 
   return {
     tool: "claude",
@@ -85,6 +90,7 @@ function liveSession(
     ...git,
     roots,
     title,
+    name,
     firstPrompt: history?.firstPrompt,
     lastPrompt: history?.lastPrompt,
     lastPromptAt: history?.lastAt,

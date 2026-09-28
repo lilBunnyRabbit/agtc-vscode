@@ -14,7 +14,10 @@ export interface ReviewLink {
 interface State {
   seen: Record<string, number>;
   reviews?: ReviewLink[];
+  titles?: Record<string, string>;
 }
+
+const MAX_TITLES = 500;
 
 const MAX_REVIEWS = 100;
 /** `ps` reports start times in whole seconds, so a reviewer may look older than the click that started it. */
@@ -23,6 +26,7 @@ const START_SLACK_MS = 5000;
 export class StateStore {
   private seen: Record<string, number> = {};
   private reviews: ReviewLink[] = [];
+  private titles: Record<string, string> = {};
 
   private constructor(private readonly path: string) {}
 
@@ -32,6 +36,7 @@ export class StateStore {
     if (state) {
       store.seen = state.seen ?? {};
       store.reviews = state.reviews ?? [];
+      store.titles = state.titles ?? {};
     }
     return store;
   }
@@ -43,6 +48,18 @@ export class StateStore {
   mark(id: string, at = Date.now()): void {
     if (this.seenAt(id) >= at) return;
     this.seen[id] = at;
+    this.save();
+  }
+
+  titleOf(id: string): string | undefined {
+    return this.titles[id];
+  }
+
+  /** A title lives only in the terminal that shows it; kept here so the row keeps its name after the terminal is gone. */
+  rememberTitle(id: string, title: string): void {
+    if (this.titles[id] === title) return;
+    const entries = Object.entries(this.titles).filter(([key]) => key !== id);
+    this.titles = Object.fromEntries([...entries.slice(-MAX_TITLES), [id, title]]);
     this.save();
   }
 
@@ -68,7 +85,7 @@ export class StateStore {
   save(): void {
     try {
       mkdirSync(dirname(this.path), { recursive: true });
-      writeFileSync(this.path, JSON.stringify({ seen: this.seen, reviews: this.reviews } satisfies State));
+      writeFileSync(this.path, JSON.stringify({ seen: this.seen, reviews: this.reviews, titles: this.titles } satisfies State));
     } catch {
       // A read-only cache dir only costs persistence, not functionality.
     }

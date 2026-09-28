@@ -28,6 +28,8 @@ export interface SessionInput {
   branch?: string;
   changes?: GitChanges;
   title: string;
+  /** The name the agent gave itself (terminal title) or the user gave it; remembered across restarts. */
+  name?: string;
   firstPrompt?: string;
   lastPrompt?: string;
   lastPromptAt?: number;
