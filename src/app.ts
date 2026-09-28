@@ -145,7 +145,7 @@ export class App {
 
   /** Codex ids stay placeholders until the first message; nothing to resume there yet. */
   private remembered(): Remembered[] {
-    return this.inWindow.filter((s) => !s.id.startsWith("pid-")).map((s) => ({ id: s.id, tool: s.tool, cwd: workDir(s), reviewOf: s.reviewOf }));
+    return this.inWindow.filter((s) => !s.id.startsWith("pid-")).map((s) => ({ id: s.id, tool: s.tool, cwd: s.cwd, reviewOf: s.reviewOf }));
   }
 
   /** A finished session's transcript no longer changes, so its last message is read once per last-activity time. */

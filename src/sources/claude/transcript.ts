@@ -144,6 +144,20 @@ export function lastAssistantMessage(sessionId: string, cwd: string): string | u
   return text || undefined;
 }
 
+const missingAt = new Map<string, number>();
+const MISSING_RECHECK_MS = 60_000;
+
+/**
+ * History lists sessions that never wrote a transcript (only slash commands) or whose transcript
+ * Claude has cleaned up; `--resume` on those exits without a word.
+ */
+export function hasTranscript(sessionId: string, cwd: string, now = Date.now()): boolean {
+  if (now - (missingAt.get(sessionId) ?? 0) < MISSING_RECHECK_MS) return false;
+  if (transcriptPath(sessionId, cwd)) return true;
+  missingAt.set(sessionId, now);
+  return false;
+}
+
 export function transcriptPath(sessionId: string, cwd: string): string | undefined {
   const known = pathById.get(sessionId);
   if (known) return known;

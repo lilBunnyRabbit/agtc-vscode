@@ -6,7 +6,7 @@ import type { SourceOptions, Surfaces } from "../types";
 import { type ClaudeHistory, readClaudeHistory } from "./history";
 import { type ClaudeRegistration, readClaudeRegistry } from "./registry";
 import { claudeSubagents } from "./subagents";
-import { type TranscriptActivity, customTitle, transcriptActivity } from "./transcript";
+import { type TranscriptActivity, customTitle, hasTranscript, transcriptActivity } from "./transcript";
 
 /** Claude animates one of these at the start of the tab title while it works. */
 const stripTitleGlyph = (title: string) => title.replace(/^[^\p{L}\p{N}]+\s*/u, "").trim();
@@ -19,7 +19,7 @@ export async function claudeSessions({ surfaces, sinceMs }: SourceOptions): Prom
   const registry = readClaudeRegistry();
   const history = readClaudeHistory();
   const liveIds = new Set(registry.map((r) => r.sessionId));
-  const inactive = [...history].filter(([id, h]) => !liveIds.has(id) && h.lastAt >= sinceMs && h.project);
+  const inactive = [...history].filter(([id, h]) => !liveIds.has(id) && h.lastAt >= sinceMs && h.project && hasTranscript(id, h.project));
 
   const [processes, liveWork, inactiveGit] = await Promise.all([
     processInfo(registry.map((r) => r.pid)),

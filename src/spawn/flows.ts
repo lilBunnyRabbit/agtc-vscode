@@ -63,10 +63,10 @@ export async function moveToWorktree(ctx: SpawnContext, session: Session): Promi
   if (dir) await startAgent(ctx, "codex", dir, session.lastPrompt ? writeTask(session.lastPrompt) : undefined);
 }
 
-/** `R`: a finished session again, in its checkout. */
+/** `R`: a finished session again, in the directory it started in: Claude finds a session only from there. */
 export async function resumeAgent(ctx: SpawnContext, session: Session): Promise<void> {
   if (session.status !== "inactive") return say("still running");
-  const dir = workDir(session);
+  const dir = session.cwd;
   if (!existsSync(dir)) return say(`directory is gone: ${tildify(dir, HOME)}`);
   openAgentTerminal(dir, resumeInvocation(session), await checkoutName(dir));
   say(`resumed ${session.tool} in ${tildify(dir, HOME)}`);
