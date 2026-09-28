@@ -6,7 +6,9 @@ import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
 import { collectSessions } from "./model/sessions";
 import { StateStore } from "./model/state-store";
 import { HOME, STATE_FILE } from "./paths";
+import { Notifier } from "./notify";
 import { reviewerReport } from "./review/report";
+import { ReviewThreads } from "./review/threads";
 import { actionTable, buildDetail, buildGroups, buildStats, checkoutsOf, inactiveRows } from "./views/model";
 import { HomePanel } from "./views/home";
 import { SessionsPanel } from "./views/panel";
@@ -25,6 +27,8 @@ export class App {
   private readonly status = window.createStatusBarItem(StatusBarAlignment.Left, 50);
   private terminals = new Map<string, Terminal>();
   private readonly replies = new Map<string, string | undefined>();
+  readonly threads = new ReviewThreads();
+  private readonly notifier = new Notifier();
   private list: Session[] = [];
   private selectedId: string | undefined;
   private showInactive = false;
@@ -99,6 +103,7 @@ export class App {
     clearTimeout(this.timer);
     this.status.dispose();
     this.home.dispose();
+    this.threads.dispose();
   }
 
   get sessions(): Session[] {
@@ -137,6 +142,11 @@ export class App {
       this.terminals = byId;
       this.list = await collectSessions({ days, state: this.state, surfaces });
       this.render();
+      this.threads.sync(this.list);
+      this.notifier.update(this.list, workspace.getConfiguration("agtc").get<number>("notificationSeconds", 12), (id) => {
+        const session = this.byId(id);
+        if (session) void this.jump(session);
+      });
       await this.memory.remember(currentFolder(), this.remembered());
     } catch (error) {
       this.output.appendLine(`refresh failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);

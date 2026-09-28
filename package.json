@@ -124,6 +124,28 @@
         "title": "Home",
         "icon": "$(home)",
         "category": "agtc"
+      },
+      {
+        "command": "agtc.review",
+        "title": "Review Session / Hand Report Back",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.closeReviewer",
+        "title": "Close Reviewer",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.finding.send",
+        "title": "Send to Agent",
+        "icon": "$(send)",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.finding.dismiss",
+        "title": "Dismiss",
+        "icon": "$(close)",
+        "category": "agtc"
       }
     ],
     "keybindings": [
@@ -142,6 +164,10 @@
       {
         "command": "agtc.home",
         "key": "cmd+alt+t"
+      },
+      {
+        "command": "agtc.review",
+        "key": "cmd+alt+v"
       },
       {
         "command": "agtc.sessions.focus",
@@ -240,6 +266,30 @@
         {
           "command": "agtc.resume",
           "when": "false"
+        },
+        {
+          "command": "agtc.closeReviewer",
+          "when": "false"
+        },
+        {
+          "command": "agtc.finding.send",
+          "when": "false"
+        },
+        {
+          "command": "agtc.finding.dismiss",
+          "when": "false"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "agtc.finding.send",
+          "group": "navigation@1",
+          "when": "commentController == agtc.review"
+        },
+        {
+          "command": "agtc.finding.dismiss",
+          "group": "navigation@2",
+          "when": "commentController == agtc.review"
         }
       ]
     },
@@ -279,6 +329,21 @@
           "type": "boolean",
           "default": true,
           "description": "Open the home page when a window starts."
+        },
+        "agtc.reviewer": {
+          "type": "string",
+          "enum": [
+            "other",
+            "claude",
+            "codex"
+          ],
+          "default": "other",
+          "description": "Which agent reviews: the other tool than the author, or always one."
+        },
+        "agtc.notificationSeconds": {
+          "type": "number",
+          "default": 12,
+          "description": "How long the toast for a session that needs you stays; 0 keeps it until dismissed."
         }
       }
     }

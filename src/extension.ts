@@ -1,8 +1,9 @@
 import { basename } from "node:path";
-import { type ExtensionContext, Uri, commands, env, window } from "vscode";
+import { type CommentThread, type ExtensionContext, Uri, commands, env, window } from "vscode";
 import { App } from "./app";
 import { SECOND } from "./lib/time";
 import { resumeCommand, workDir } from "./model/session";
+import { closeReviewer, handTo, startReview } from "./review/flows";
 import { compose, moveToWorktree, newAgent, newWorktree, resumeAgent } from "./spawn/flows";
 
 export function activate(context: ExtensionContext): void {
@@ -42,6 +43,22 @@ export function activate(context: ExtensionContext): void {
     }),
     commands.registerCommand("agtc.compose", () => compose(app)),
     commands.registerCommand("agtc.home", () => app.home.show()),
+    commands.registerCommand("agtc.review", (id?: string) => {
+      const session = app.sessionOf(id);
+      return session && startReview(app, session);
+    }),
+    commands.registerCommand("agtc.closeReviewer", (id?: string) => {
+      const session = app.sessionOf(id);
+      if (session) closeReviewer(app, session);
+    }),
+    commands.registerCommand("agtc.finding.send", async (thread: CommentThread) => {
+      const finding = app.threads.findingOf(thread);
+      const subject = finding && app.byId(finding.subjectId);
+      if (!finding || !subject) return;
+      const where = await handTo(app, subject, finding.message);
+      window.setStatusBarMessage(where === "terminal" ? "agtc: finding is in the agent's input, unsent" : "agtc: finding copied, the session is not in this window", 4 * SECOND);
+    }),
+    commands.registerCommand("agtc.finding.dismiss", (thread: CommentThread) => app.threads.dismiss(thread)),
     commands.registerCommand("agtc.copyResume", async (id?: string) => {
       const session = app.sessionOf(id);
       if (!session) return;

@@ -142,6 +142,8 @@
     o: () => command("agtc.openFolder"),
     a: () => command("agtc.toggleInactive"),
     r: () => command("agtc.refresh"),
+    V: () => command("agtc.review"),
+    x: () => command("agtc.closeReviewer"),
     n: () => command("agtc.new"),
     N: () => command("agtc.newWorktree"),
     W: () => command("agtc.moveToWorktree"),

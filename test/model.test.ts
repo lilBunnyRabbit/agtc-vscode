@@ -71,6 +71,12 @@ describe("actionsOf", () => {
     expect(actionsOf(session({ status: "busy", terminal: "t1", worktree: "x" }))).not.toContain("worktree");
     expect(actionsOf(session({ status: "inactive" }))).toContain("resume");
     expect(actionsOf(session({ status: "done", terminal: "t1" }))).toContain("markSeen");
+    expect(actionsOf(session({ status: "idle" }))).toContain("review");
+    const reviewer = actionsOf(session({ status: "done", terminal: "t1", reviewOf: "s" }));
+    expect(reviewer).toContain("handBack");
+    expect(reviewer).toContain("closeReviewer");
+    expect(reviewer).not.toContain("review");
+    expect(actionsOf(session({ status: "busy", terminal: "t1", reviewOf: "s" }))).not.toContain("handBack");
   });
 });
 

@@ -32,9 +32,12 @@ export interface Checkout {
   name: string;
 }
 
-export type Action = "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
+export type Action = "review" | "handBack" | "closeReviewer" | "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
 
 export const ACTION_LABEL: Record<Action, string> = {
+  review: "review",
+  handBack: "hand report back",
+  closeReviewer: "close reviewer",
   jump: "jump",
   worktree: "move to worktree",
   resume: "resume",
@@ -46,6 +49,9 @@ export const ACTION_LABEL: Record<Action, string> = {
 };
 
 export const ACTION_COMMAND: Record<Action, string> = {
+  review: "agtc.review",
+  handBack: "agtc.review",
+  closeReviewer: "agtc.closeReviewer",
   jump: "agtc.jump",
   worktree: "agtc.moveToWorktree",
   resume: "agtc.resume",
@@ -59,6 +65,10 @@ export const ACTION_COMMAND: Record<Action, string> = {
 export function actionsOf(session: Session): Action[] {
   const inactive = session.status === "inactive";
   const actions: Action[] = ["jump"];
+  if (session.reviewOf) {
+    if (!inactive && session.status !== "busy") actions.push("handBack");
+    if (!inactive && session.terminal) actions.push("closeReviewer");
+  } else if (session.root) actions.push("review");
   if (inactive) actions.push("resume");
   else if (session.mainRoot && !session.worktree && (session.terminal || session.tool === "codex")) actions.push("worktree");
   if (!inactive && (session.status === "needs input" || session.status === "done")) actions.push("markSeen");

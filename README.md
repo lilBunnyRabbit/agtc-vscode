@@ -8,6 +8,14 @@ Agent Traffic Control for VS Code: every Claude Code and Codex session on the ma
 
 In the sidebar: `n` new agent in a checkout of the row's repo, `N` new agent in a new worktree, `W` move the running session into a new worktree (Claude does it through `EnterWorktree`; a Codex row gets a fresh Codex in the worktree with its last prompt), `R` resume a finished session, `t` the composer, `m` / `M` seen, `c` copy the resume command, `o` open the checkout in a new window, `a` show inactive.
 
+## Review
+
+`V` on a session (or `⌘⌥V`, or the review button) starts the loop. The spec is a file, `~/.cache/agtc/specs/<session id>.md`: ask the author to write it, write it yourself in a tab, or take a prompt as it is. With the file there, review starts a second agent read-only in a terminal split beside the author's, the other tool by default (`agtc.reviewer`). Its row hangs under the author's and shows the verdict when its turn ends.
+
+Findings the report names as `path:line` become comment threads on those lines in the author's checkout; the rest and the questions land in one thread on the spec file. Each thread has "send to agent", which puts that finding into the author's input unsent, and "dismiss". `V` on the reviewer row hands the whole report back the same way. `x` closes the reviewer, its threads go with it.
+
+A toast shows when a session turns to needs input or done while its terminal is not in front, gone after `agtc.notificationSeconds`.
+
 Agents that ran in a window come back when it reopens (`agtc.resumeOnStartup`). Worktrees go under `.claude/worktrees` of the repo (`agtc.worktreeDir`), branched from the remote default (`agtc.baseBranch`). `agtc.terminalLocation: editor` gives agents a full tab.
 
 ## Develop

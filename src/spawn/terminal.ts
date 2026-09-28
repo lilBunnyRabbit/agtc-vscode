@@ -5,9 +5,10 @@ const SHELL_READY_TIMEOUT_MS = 4000;
 const WITHOUT_DEBUGGER = { NODE_OPTIONS: null, VSCODE_INSPECTOR_OPTIONS: null };
 
 /** Text sent before the shell is up gets garbled into its startup, so the command waits for shell integration, or a timeout without it. */
-export function openAgentTerminal(dir: string, command: string, name: string): Terminal {
+export function openAgentTerminal(dir: string, command: string, name: string, beside?: Terminal): Terminal {
   const editor = workspace.getConfiguration("agtc").get<string>("terminalLocation", "panel") === "editor";
-  const terminal = window.createTerminal({ name, cwd: dir, env: WITHOUT_DEBUGGER, location: editor ? TerminalLocation.Editor : TerminalLocation.Panel });
+  const location = beside ? { parentTerminal: beside } : editor ? TerminalLocation.Editor : TerminalLocation.Panel;
+  const terminal = window.createTerminal({ name, cwd: dir, env: WITHOUT_DEBUGGER, location });
   terminal.show();
   let sent = false;
   const send = () => {
