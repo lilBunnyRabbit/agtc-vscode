@@ -14,29 +14,35 @@ export interface SessionNode {
   kind: "session";
   session: Session;
   underSubject: boolean;
+  digit?: number;
 }
 
 export type Node = RepoNode | SessionNode;
+
+const MAX_DIGIT = 9;
 
 export class SessionsProvider implements TreeDataProvider<Node> {
   private readonly changed = new EventEmitter<Node | undefined>();
   readonly onDidChangeTreeData: Event<Node | undefined> = this.changed.event;
   private sessions: Session[] = [];
   private repos: RepoNode[] = [];
+  private digits = new Map<string, number>();
   showInactive = false;
 
   set(sessions: Session[]): void {
     this.sessions = sessions;
+    this.digits = new Map(
+      sessions
+        .filter((s) => s.terminal && s.status !== "inactive")
+        .slice(0, MAX_DIGIT)
+        .map((s, i) => [s.id, i + 1]),
+    );
     this.rebuild();
   }
 
   toggleInactive(): void {
     this.showInactive = !this.showInactive;
     this.rebuild();
-  }
-
-  byId(id: string): Session | undefined {
-    return this.sessions.find((s) => s.id === id);
   }
 
   nodeOf(id: string): SessionNode | undefined {
@@ -58,7 +64,7 @@ export class SessionsProvider implements TreeDataProvider<Node> {
   private sessionNode(sessions: Session[], index: number): SessionNode {
     const session = sessions[index];
     const underSubject = !!session.reviewOf && sessions.some((s) => s.id === session.reviewOf);
-    return { kind: "session", session, underSubject };
+    return { kind: "session", session, underSubject, digit: this.digits.get(session.id) };
   }
 
   getChildren(node?: Node): Node[] {
@@ -69,7 +75,7 @@ export class SessionsProvider implements TreeDataProvider<Node> {
 
   getParent(node: Node): Node | undefined {
     if (node.kind === "repo") return undefined;
-    return this.repos.find((r) => r.sessions.includes(node.session));
+    return this.repos.find((r) => r.sessions.some((s) => s.id === node.session.id));
   }
 
   getTreeItem(node: Node): TreeItem {
@@ -80,23 +86,22 @@ export class SessionsProvider implements TreeDataProvider<Node> {
       item.contextValue = "repo";
       return item;
     }
-    const { session, underSubject } = node;
-    const item = new TreeItem(sessionLabel(session, underSubject), TreeItemCollapsibleState.None);
+    const { session, underSubject, digit } = node;
+    const item = new TreeItem(sessionLabel(session, underSubject, digit), TreeItemCollapsibleState.None);
     item.id = session.id;
     item.description = sessionDescription(session);
     item.iconPath = statusIcon(session.status);
     item.contextValue = "session";
     item.tooltip = tooltip(session);
+    item.command = { command: "agtc.jump", title: "Jump", arguments: [node] };
     return item;
   }
 }
 
 function tooltip(session: Session): MarkdownString {
-  const lines = [`**${session.title}**`, "", `${session.tool} · ${session.status}`, tildify(session.root ?? session.cwd, HOME)];
+  const lines = [`**${session.title}**`, "", `${session.tool} · ${session.status}${session.terminal ? "" : " · outside this window"}`, tildify(session.root ?? session.cwd, HOME)];
   if (session.waitingFor) lines.push(`waiting for: ${session.waitingFor}`);
   if (session.verdict) lines.push(`verdict: ${session.verdict.text}`);
   if (session.lastPrompt) lines.push("", session.lastPrompt);
-  const md = new MarkdownString(lines.join("\n\n"));
-  md.supportThemeIcons = true;
-  return md;
+  return new MarkdownString(lines.join("\n\n"));
 }

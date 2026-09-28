@@ -74,7 +74,42 @@
         "command": "agtc.openFolder",
         "title": "Open Checkout in New Window",
         "category": "agtc"
+      },
+      {
+        "command": "agtc.jump",
+        "title": "Jump to Session",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.next",
+        "title": "Next Running Session",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.previous",
+        "title": "Previous Running Session",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.jumpWaiting",
+        "title": "Jump to the Session That Needs You",
+        "category": "agtc"
       }
+    ],
+    "keybindings": [
+      { "command": "agtc.next", "key": "cmd+alt+j" },
+      { "command": "agtc.previous", "key": "cmd+alt+k" },
+      { "command": "agtc.jumpWaiting", "key": "cmd+alt+n" },
+      { "command": "agtc.sessions.focus", "key": "cmd+alt+a" },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+1", "args": 1 },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+2", "args": 2 },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+3", "args": 3 },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+4", "args": 4 },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+5", "args": 5 },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+6", "args": 6 },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+7", "args": 7 },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+8", "args": 8 },
+      { "command": "agtc.jumpDigit", "key": "cmd+alt+9", "args": 9 }
     ],
     "menus": {
       "view/title": [
@@ -122,6 +157,10 @@
         },
         {
           "command": "agtc.openFolder",
+          "when": "false"
+        },
+        {
+          "command": "agtc.jump",
           "when": "false"
         }
       ]
