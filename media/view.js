@@ -137,6 +137,11 @@
     o: () => command("agtc.openFolder"),
     a: () => command("agtc.toggleInactive"),
     r: () => command("agtc.refresh"),
+    n: () => command("agtc.new"),
+    N: () => command("agtc.newWorktree"),
+    W: () => command("agtc.moveToWorktree"),
+    R: () => command("agtc.resume"),
+    t: () => command("agtc.compose"),
   };
 
   list.addEventListener("keydown", (event) => {

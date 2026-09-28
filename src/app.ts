@@ -1,5 +1,5 @@
-import { type OutputChannel, StatusBarAlignment, type Terminal, Uri, commands, window, workspace } from "vscode";
-import { openFolderHere } from "./folder";
+import { type Memento, type OutputChannel, StatusBarAlignment, type Terminal, Uri, commands, window, workspace } from "vscode";
+import { currentFolder, openFolderHere } from "./folder";
 import { SECOND } from "./lib/time";
 import { linkedTerminals } from "./link/terminals";
 import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
@@ -8,6 +8,8 @@ import { StateStore } from "./model/state-store";
 import { STATE_FILE } from "./paths";
 import { buildDetail, buildGroups } from "./views/model";
 import { SessionsPanel } from "./views/panel";
+import { type Remembered, WindowMemory } from "./spawn/memory";
+import { restoreSessions } from "./spawn/restore";
 
 const POLL_VISIBLE_MS = 2 * SECOND;
 const POLL_HIDDEN_MS = 10 * SECOND;
@@ -15,6 +17,7 @@ const POLL_HIDDEN_MS = 10 * SECOND;
 export class App {
   readonly state = StateStore.load(STATE_FILE);
   readonly panel: SessionsPanel;
+  readonly memory: WindowMemory;
   private readonly status = window.createStatusBarItem(StatusBarAlignment.Left, 50);
   private terminals = new Map<string, Terminal>();
   private list: Session[] = [];
@@ -26,8 +29,10 @@ export class App {
   constructor(
     private readonly output: OutputChannel,
     extensionUri: Uri,
+    memento: Memento,
   ) {
     this.panel = new SessionsPanel(extensionUri);
+    this.memory = new WindowMemory(memento);
     this.status.command = "agtc.jumpWaiting";
     this.panel.onDidChangeVisibility(() => this.schedule());
     this.panel.onMessage((message) => {
@@ -48,13 +53,30 @@ export class App {
       const session = terminal && this.sessionInTerminal(terminal);
       if (session) this.select(session.id, true);
     });
-    void this.refresh().then(() => this.schedule());
+    void this.start();
+  }
+
+  private async start(): Promise<void> {
+    await this.refresh();
+    const remembered = await this.memory.take(currentFolder());
+    if (remembered.length && workspace.getConfiguration("agtc").get<boolean>("resumeOnStartup", true)) {
+      const opened = await restoreSessions(remembered, this.list);
+      if (opened) {
+        window.setStatusBarMessage(`agtc: resumed ${opened} ${opened === 1 ? "agent" : "agents"}`, 5 * SECOND);
+        await this.refresh();
+      }
+    }
+    this.schedule();
   }
 
   dispose(): void {
     this.disposed = true;
     clearTimeout(this.timer);
     this.status.dispose();
+  }
+
+  get sessions(): Session[] {
+    return this.list;
   }
 
   get selected(): Session | undefined {
@@ -89,9 +111,15 @@ export class App {
       this.terminals = byId;
       this.list = await collectSessions({ days, state: this.state, surfaces });
       this.render();
+      await this.memory.remember(currentFolder(), this.remembered());
     } catch (error) {
       this.output.appendLine(`refresh failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
     }
+  }
+
+  /** Codex ids stay placeholders until the first message; nothing to resume there yet. */
+  private remembered(): Remembered[] {
+    return this.inWindow.filter((s) => !s.id.startsWith("pid-")).map((s) => ({ id: s.id, tool: s.tool, cwd: workDir(s), reviewOf: s.reviewOf }));
   }
 
   private render(): void {
@@ -141,7 +169,7 @@ export class App {
     if (terminal) terminal.show();
     else if (session.status !== "inactive") window.setStatusBarMessage(`${session.title}: runs outside this window`, 3 * SECOND);
     this.state.mark(session.id);
-    if (!openFolderHere(workDir(session))) await this.refresh();
+    if (!(await openFolderHere(workDir(session), (from, to) => this.memory.move(from, to)))) await this.refresh();
   }
 
   jumpDigit(digit: number): Promise<void> | undefined {

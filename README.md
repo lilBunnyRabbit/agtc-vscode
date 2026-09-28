@@ -4,7 +4,11 @@ Agent Traffic Control for VS Code: every Claude Code and Codex session on the ma
 
 ## Keys
 
-`⌘⌥J` / `⌘⌥K` next / previous session running in this window, `⌘⌥1`…`9` the session with that digit, `⌘⌥N` the session that has waited longest, `⌘⌥A` the sidebar. Clicking a row brings its terminal to the front and makes its checkout the window's folder. `⇗` marks a session running outside this window.
+`⌘⌥J` / `⌘⌥K` next / previous session running in this window, `⌘⌥1`…`9` the session with that digit, `⌘⌥N` the session that has waited longest, `⌘⌥A` the sidebar, `⌘⌥T` start an agent with a task. Clicking a row brings its terminal to the front and makes its checkout the window's folder. `⇗` marks a session running outside this window.
+
+In the sidebar: `n` new agent in a checkout of the row's repo, `N` new agent in a new worktree, `W` move the running session into a new worktree (Claude does it through `EnterWorktree`; a Codex row gets a fresh Codex in the worktree with its last prompt), `R` resume a finished session, `t` the composer, `m` / `M` seen, `c` copy the resume command, `o` open the checkout in a new window, `a` show inactive.
+
+Agents that ran in a window come back when it reopens (`agtc.resumeOnStartup`). Worktrees go under `.claude/worktrees` of the repo (`agtc.worktreeDir`), branched from the remote default (`agtc.baseBranch`). `agtc.terminalLocation: editor` gives agents a full tab.
 
 ## Develop
 
