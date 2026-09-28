@@ -5,6 +5,8 @@ import { SECOND } from "./lib/time";
 import { resumeCommand, workDir } from "./model/session";
 import { closeReviewer, handTo, startReview } from "./review/flows";
 import { cleanWorktrees } from "./worktrees/cleanup";
+import { searchSessions } from "./search";
+import { bringHere } from "./spawn/bring";
 import { compose, moveToWorktree, newAgent, newWorktree, resumeAgent } from "./spawn/flows";
 
 export function activate(context: ExtensionContext): void {
@@ -44,6 +46,19 @@ export function activate(context: ExtensionContext): void {
     }),
     commands.registerCommand("agtc.compose", () => compose(app)),
     commands.registerCommand("agtc.home", () => app.home.show()),
+    commands.registerCommand("agtc.search", async () => {
+      const session = await searchSessions(app.sessions);
+      if (!session) return;
+      if (session.status === "inactive") {
+        app.select(session.id, true);
+        return resumeAgent(app, session);
+      }
+      return app.jump(session);
+    }),
+    commands.registerCommand("agtc.bringHere", (id?: string) => {
+      const session = app.sessionOf(id);
+      return session && bringHere(app, session);
+    }),
     commands.registerCommand("agtc.cleanWorktrees", async (id?: string) => {
       if (!(await cleanWorktrees(app.sessions, output, app.sessionOf(id)))) return;
       app.forgetWorktrees();

@@ -8,6 +8,7 @@
     branch: "⎇",
     roots: "⋯",
     worktree: "⎇",
+    pr: "⇄",
     diff: "±",
     file: "·",
     wait: "!",
@@ -90,8 +91,8 @@
   }
 
   function itemHtml(item, child) {
-    const classes = ["item", child ? "child" : "", item.file ? "link" : "", item.icon].filter(Boolean).join(" ");
-    const file = item.file ? ` data-file="${esc(item.file)}"` : "";
+    const classes = ["item", child ? "child" : "", item.file || item.url ? "link" : "", item.icon].filter(Boolean).join(" ");
+    const file = item.file ? ` data-file="${esc(item.file)}"` : item.url ? ` data-url="${esc(item.url)}"` : "";
     const desc = item.description ? `<span class="desc">${esc(item.description)}</span>` : "";
     return `<div class="${classes}"${file} title="${esc(item.tooltip || item.label)}"><span class="icon">${ICON[item.icon] || ""}</span><span class="label">${esc(item.label)}</span>${desc}</div>`;
   }
@@ -135,7 +136,9 @@
     if (button) return vscode.postMessage({ type: "command", command: button.getAttribute("data-command"), id: selectedId });
     const item = event.target.closest(".item.link");
     const file = item && item.getAttribute("data-file");
+    const url = item && item.getAttribute("data-url");
     if (file) vscode.postMessage({ type: "openFile", file });
+    else if (url) vscode.postMessage({ type: "openUrl", url });
   });
 
   const KEYS = {
@@ -150,6 +153,7 @@
     o: () => command("agtc.openFolder"),
     a: () => command("agtc.toggleInactive"),
     r: () => command("agtc.refresh"),
+    "/": () => command("agtc.search"),
     V: () => command("agtc.review"),
     x: () => command("agtc.closeReviewer"),
     n: () => command("agtc.new"),

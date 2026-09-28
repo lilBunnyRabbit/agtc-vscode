@@ -4,6 +4,7 @@ import { collapse, tildify, untildify } from "../lib/text";
 import { type Session, type Tool, TOOLS, resumeInvocation, workDir } from "../model/session";
 import { HOME } from "../paths";
 import { baseBranch, checkoutName, createWorktree } from "../sources/git";
+import { attach, withAttachments } from "./attachments";
 import { DEFAULT_WORKTREES_DIR, enterWorktreeRequest, startCommand, worktreeDir, writeTask } from "./task";
 import { openAgentTerminal } from "./terminal";
 
@@ -120,16 +121,22 @@ export interface ComposerInput {
   dir: string;
   branch?: string;
   task: string;
+  attachments?: string[];
+}
+
+export async function attachFiles(): Promise<string[]> {
+  const uris = await window.showOpenDialog({ canSelectFiles: true, canSelectFolders: false, canSelectMany: true, openLabel: "Attach" });
+  return (uris ?? []).map((uri) => uri.fsPath);
 }
 
 /** The home page composer: a task in a checkout, or in a new worktree of it. */
-export async function startFromComposer(ctx: SpawnContext, { tool, dir, branch, task }: ComposerInput): Promise<void> {
+export async function startFromComposer(ctx: SpawnContext, { tool, dir, branch, task, attachments = [] }: ComposerInput): Promise<void> {
   if (!existsSync(dir)) return say(`no such directory: ${tildify(dir, HOME)}`);
-  const taskPath = task.trim() ? writeTask(task) : undefined;
-  if (!branch) return startAgent(ctx, tool, dir, taskPath);
   const mainRoot = ctx.sessions.find((s) => workDir(s) === dir)?.mainRoot ?? dir;
-  const worktree = await createWorktreeFor(mainRoot, branch);
-  if (worktree) await startAgent(ctx, tool, worktree, taskPath);
+  const target = branch ? await createWorktreeFor(mainRoot, branch) : dir;
+  if (!target) return;
+  const text = withAttachments(task, await attach(target, attachments.filter((file) => existsSync(file))));
+  await startAgent(ctx, tool, target, text.trim() ? writeTask(text) : undefined);
 }
 
 async function pickCheckout(ctx: SpawnContext, session: Session | undefined, placeHolder: string): Promise<string | undefined> {

@@ -32,9 +32,10 @@ export interface Checkout {
   name: string;
 }
 
-export type Action = "cleanWorktrees" | "review" | "handBack" | "closeReviewer" | "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
+export type Action = "bringHere" | "cleanWorktrees" | "review" | "handBack" | "closeReviewer" | "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
 
 export const ACTION_LABEL: Record<Action, string> = {
+  bringHere: "bring here",
   cleanWorktrees: "clean up worktrees",
   review: "review",
   handBack: "hand report back",
@@ -50,6 +51,7 @@ export const ACTION_LABEL: Record<Action, string> = {
 };
 
 export const ACTION_COMMAND: Record<Action, string> = {
+  bringHere: "agtc.bringHere",
   cleanWorktrees: "agtc.cleanWorktrees",
   review: "agtc.review",
   handBack: "agtc.review",
@@ -67,6 +69,7 @@ export const ACTION_COMMAND: Record<Action, string> = {
 export type ActionKind = "primary" | "review" | "good" | "danger" | "neutral" | "quiet";
 
 export const ACTION_KIND: Record<Action, ActionKind> = {
+  bringHere: "neutral",
   cleanWorktrees: "quiet",
   jump: "primary",
   resume: "primary",
@@ -84,6 +87,7 @@ export const ACTION_KIND: Record<Action, ActionKind> = {
 export function actionsOf(session: Session): Action[] {
   const inactive = session.status === "inactive";
   const actions: Action[] = inactive ? [] : ["jump"];
+  if (!inactive && !session.terminal && session.pid && !session.id.startsWith("pid-")) actions.push("bringHere");
   if (session.reviewOf) {
     if (!inactive && session.status !== "busy") actions.push("handBack");
     if (!inactive && session.terminal) actions.push("closeReviewer");
@@ -108,6 +112,7 @@ export interface DetailItem {
   description?: string;
   tooltip?: string;
   file?: string;
+  url?: string;
   children?: DetailItem[];
 }
 
@@ -248,10 +253,19 @@ export function repoDescription(sessions: Session[]): string {
   return parts.join(" · ");
 }
 
-export function buildDetail(session: Session, now = Date.now(), worktreeState?: string): Detail {
+export interface DetailExtras {
+  worktreeState?: string;
+  pullRequest?: { number: number; state: string; url: string; isDraft: boolean; title: string };
+}
+
+export function buildDetail(session: Session, now = Date.now(), { worktreeState, pullRequest }: DetailExtras = {}): Detail {
   const dir = workDir(session);
   const items: DetailItem[] = [{ icon: "folder", label: tildify(dir, HOME), description: session.worktree ? `worktree ${session.worktree}` : undefined }];
   if (worktreeState) items.push({ icon: "worktree", label: worktreeState });
+  if (pullRequest) {
+    const state = pullRequest.isDraft && pullRequest.state === "OPEN" ? "draft" : pullRequest.state.toLowerCase();
+    items.push({ icon: "pr", label: `#${pullRequest.number} ${state}`, description: collapse(pullRequest.title, PROMPT_WIDTH), url: pullRequest.url, tooltip: pullRequest.url });
+  }
   if (session.branch) items.push({ icon: "branch", label: session.branch });
   if (session.roots.length > 1) {
     items.push({ icon: "roots", label: "also touched", children: session.roots.slice(1).map((root) => ({ icon: "folder", label: tildify(root, HOME) })) });

@@ -8,6 +8,7 @@
   let where = "here";
   let picked;
   const expanded = new Set();
+  let attachments = [];
   const PAGE = 15;
   let shown = PAGE;
 
@@ -121,6 +122,18 @@
   $("branch").addEventListener("input", paths);
 
   $("browse").addEventListener("click", () => vscode.postMessage({ type: "browse" }));
+  $("attach").addEventListener("click", () => vscode.postMessage({ type: "attach" }));
+
+  function files() {
+    $("files").innerHTML = attachments.map((file, i) => `<span class="file" title="${esc(file)}">${esc(file.split("/").pop())}<button data-index="${i}" class="ghost" title="remove">×</button></span>`).join("");
+  }
+
+  $("files").addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    attachments.splice(Number(button.getAttribute("data-index")), 1);
+    files();
+  });
 
   function start() {
     const branch = where === "worktree" ? $("branch").value.trim() : "";
@@ -133,8 +146,10 @@
       $("note").textContent = "pick a checkout";
       return;
     }
-    vscode.postMessage({ type: "start", input: { tool, dir: $("dir").value, branch: branch || undefined, task: $("task").value } });
+    vscode.postMessage({ type: "start", input: { tool, dir: $("dir").value, branch: branch || undefined, task: $("task").value, attachments } });
     $("task").value = "";
+    attachments = [];
+    files();
     $("note").textContent = `starting ${tool}…`;
     setTimeout(() => ($("note").textContent = ""), 4000);
   }
@@ -161,6 +176,9 @@
       render();
       $("dir").value = picked.dir;
       paths();
+    } else if (message.type === "attached") {
+      attachments = [...new Set([...attachments, ...message.files])];
+      files();
     } else if (message.type === "focus") {
       $("task").focus();
     }

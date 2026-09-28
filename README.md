@@ -16,6 +16,14 @@ Findings the report names as `path:line` become comment threads on those lines i
 
 A toast shows when a session turns to needs input or done while its terminal is not in front, gone after `agtc.notificationSeconds`.
 
+## Search, attachments, sessions elsewhere
+
+`⌘⌥/` (or `/` in the sidebar) searches every prompt of every session, finished ones included. Enter jumps to a running session and resumes a finished one.
+
+"Attach files…" in the composer copies the files into the checkout's `.agtc/attachments/` and names them in the task. The folder is excluded through the repository's `info/exclude`, no tracked file changes.
+
+A session marked `⇗` runs in another app. "bring here" ends that process and resumes the session in a terminal of this window; it waits for the process to exit first and refuses while a turn is running. With `agtc.pullRequests` on, the detail shows the pull request of the selected session's branch, read through `gh`.
+
 ## Worktrees
 
 "Clean Up Worktrees" (command palette, or the link under a session's detail) lists the repository's worktrees with their state: `fresh` never committed to, `gone` upstream deleted after a merge, `missing` directory gone, `pushed`, `unpushed`, `dirty`, `detached`. Live and locked ones are left out. The safe ones, `fresh`, `gone` and `missing`, come ticked. One confirm removes what is ticked; ticking one that holds work nowhere else says so in the confirm. `gone` and `fresh` lose their branch too, every other branch stays. The detail of a session in a worktree shows that worktree's state.

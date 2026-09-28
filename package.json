@@ -152,6 +152,17 @@
         "title": "Clean Up Worktrees",
         "icon": "$(trash)",
         "category": "agtc"
+      },
+      {
+        "command": "agtc.search",
+        "title": "Search Sessions and Prompts",
+        "icon": "$(search)",
+        "category": "agtc"
+      },
+      {
+        "command": "agtc.bringHere",
+        "title": "Bring Session Here",
+        "category": "agtc"
       }
     ],
     "keybindings": [
@@ -174,6 +185,10 @@
       {
         "command": "agtc.review",
         "key": "cmd+alt+v"
+      },
+      {
+        "command": "agtc.search",
+        "key": "cmd+alt+/"
       },
       {
         "command": "agtc.sessions.focus",
@@ -233,6 +248,11 @@
           "group": "navigation@0"
         },
         {
+          "command": "agtc.search",
+          "when": "view == agtc.sessions",
+          "group": "navigation@0"
+        },
+        {
           "command": "agtc.refresh",
           "when": "view == agtc.sessions",
           "group": "navigation@3"
@@ -283,6 +303,10 @@
         },
         {
           "command": "agtc.finding.dismiss",
+          "when": "false"
+        },
+        {
+          "command": "agtc.bringHere",
           "when": "false"
         }
       ],
@@ -350,6 +374,11 @@
           "type": "number",
           "default": 12,
           "description": "How long the toast for a session that needs you stays; 0 keeps it until dismissed."
+        },
+        "agtc.pullRequests": {
+          "type": "boolean",
+          "default": false,
+          "description": "Ask gh for the pull request of the selected session's branch. Uses the network."
         }
       }
     }

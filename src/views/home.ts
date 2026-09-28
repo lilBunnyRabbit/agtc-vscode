@@ -3,7 +3,7 @@ import { EventEmitter, Uri, ViewColumn, type Webview, type WebviewPanel, window 
 import type { ComposerInput } from "../spawn/flows";
 import type { Checkout, HomeState } from "./model";
 
-export type HomeMessage = { type: "start"; input: ComposerInput } | { type: "browse" } | { type: "command"; command: string; id?: string } | { type: "ready" };
+export type HomeMessage = { type: "start"; input: ComposerInput } | { type: "browse" } | { type: "attach" } | { type: "command"; command: string; id?: string } | { type: "ready" };
 
 export class HomePanel {
   private panel: WebviewPanel | undefined;
@@ -47,6 +47,10 @@ export class HomePanel {
   set(state: HomeState): void {
     this.last = state;
     void this.panel?.webview.postMessage({ type: "state", state });
+  }
+
+  attached(files: string[]): void {
+    void this.panel?.webview.postMessage({ type: "attached", files });
   }
 
   picked(checkout: Checkout): void {
@@ -93,7 +97,8 @@ export class HomePanel {
       <div id="branch-path" class="hint"></div>
     </div>
   </div>
-  <div class="toolbar end"><span id="note"></span><button id="start" class="primary">Start <kbd>⌘⏎</kbd></button></div>
+  <div id="files" class="files"></div>
+  <div class="toolbar end"><button id="attach">Attach files…</button><span id="note"></span><button id="start" class="primary">Start <kbd>⌘⏎</kbd></button></div>
 </section>
 <section id="resume"><div class="section-head"><h2>Resume</h2><input id="filter" placeholder="filter by name, prompt, repo or branch"></div><div id="resume-list"></div><button id="more" class="ghost">show more</button></section>
 <section id="stats"><h2>Activity</h2><div id="cards" class="cards"></div><table id="repos"></table></section>

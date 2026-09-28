@@ -6,6 +6,7 @@ export type ViewMessage =
   | { type: "select"; id: string }
   | { type: "jump"; id: string }
   | { type: "openFile"; file: string }
+  | { type: "openUrl"; url: string }
   | { type: "command"; command: string; id?: string };
 
 export class SessionsPanel implements WebviewViewProvider {

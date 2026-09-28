@@ -390,3 +390,34 @@ body.home {
   color: var(--dim);
   padding: 6px 0;
 }
+
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.files:empty {
+  display: none;
+}
+
+.file {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px 1px 8px;
+  border-radius: 10px;
+  font-size: 0.9em;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.home .file button.ghost {
+  padding: 0 5px;
+  color: inherit;
+}
+
+#attach {
+  margin-right: 8px;
+}

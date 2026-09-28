@@ -1,4 +1,4 @@
-import { type Memento, type OutputChannel, StatusBarAlignment, type Terminal, Uri, commands, window, workspace } from "vscode";
+import { type Memento, type OutputChannel, StatusBarAlignment, type Terminal, Uri, commands, env, window, workspace } from "vscode";
 import { currentFolder, openFolderHere } from "./folder";
 import { SECOND } from "./lib/time";
 import { linkedTerminals } from "./link/terminals";
@@ -6,7 +6,10 @@ import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
 import { collectSessions } from "./model/sessions";
 import { StateStore } from "./model/state-store";
 import { HOME, STATE_FILE } from "./paths";
+import { existsSync } from "node:fs";
 import { Notifier } from "./notify";
+import { pullRequestOf } from "./pull-requests";
+import { attachFiles } from "./spawn/flows";
 import { reviewerReport } from "./review/report";
 import { ReviewThreads } from "./review/threads";
 import { factsOf } from "./worktrees/cleanup";
@@ -53,6 +56,8 @@ export class App {
       switch (message.type) {
         case "start":
           return void startFromComposer(this, message.input);
+        case "attach":
+          return void attachFiles().then((files) => files.length && this.home.attached(files));
         case "browse":
           return void window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false }).then((uris) => uris?.[0] && this.home.picked(checkoutsOf([uris[0].fsPath], HOME)[0]));
         case "command":
@@ -76,6 +81,8 @@ export class App {
         }
         case "openFile":
           return void commands.executeCommand("agtc.openDiff", message.file);
+        case "openUrl":
+          return void env.openExternal(Uri.parse(message.url));
         case "command":
           return void commands.executeCommand(message.command, message.id);
       }
@@ -179,6 +186,12 @@ export class App {
     return found ? `${factsOf(found)}${isRemovable(found) ? " · safe to remove" : ""}` : undefined;
   }
 
+  private pullRequest(session: Session) {
+    if (!session.root || !session.branch || !existsSync(session.root)) return undefined;
+    if (!workspace.getConfiguration("agtc").get<boolean>("pullRequests", false)) return undefined;
+    return pullRequestOf(session.root, session.branch, () => this.render());
+  }
+
   forgetWorktrees(): void {
     this.worktrees.clear();
   }
@@ -195,7 +208,7 @@ export class App {
     const actions = actionTable();
     this.panel.set({
       groups: buildGroups(this.list, this.showInactive),
-      detail: selected ? buildDetail(selected, Date.now(), this.worktreeState(selected)) : undefined,
+      detail: selected ? buildDetail(selected, Date.now(), { worktreeState: this.worktreeState(selected), pullRequest: this.pullRequest(selected) }) : undefined,
       selectedId: this.selectedId,
       showInactive: this.showInactive,
       actions,

@@ -8,9 +8,9 @@ export function run(argv: string[]): Promise<string> {
   });
 }
 
-export function exec(argv: string[]): Promise<{ ok: boolean; output: string }> {
+export function exec(argv: string[], cwd?: string): Promise<{ ok: boolean; output: string }> {
   return new Promise((resolve) => {
-    execFile(argv[0], argv.slice(1), { encoding: "utf8", maxBuffer: MAX_BUFFER }, (error, stdout, stderr) =>
+    execFile(argv[0], argv.slice(1), { encoding: "utf8", maxBuffer: MAX_BUFFER, cwd }, (error, stdout, stderr) =>
       resolve({ ok: !error, output: ((stdout ?? "") + (stderr ?? "")).trim() || (error ? String(error.message) : "") }),
     );
   });
