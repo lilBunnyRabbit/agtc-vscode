@@ -4,7 +4,7 @@ Agent Traffic Control for VS Code: every Claude Code and Codex session on the ma
 
 ## Keys
 
-`⌘⌥J` / `⌘⌥K` next / previous session running in this window, `⌘⌥1`…`9` the session with that digit, `⌘⌥N` the session that has waited longest, `⌘⌥A` the sidebar, `⌘⌥T` the home page: composer (agent, checkout, worktree switch, task, `⌘⏎` starts), the sessions that need you, every session with its action buttons. The same buttons sit under the sidebar detail. Clicking a row brings its terminal to the front and makes its checkout the window's folder. `⇗` marks a session running outside this window.
+`⌘⌥J` / `⌘⌥K` next / previous session running in this window, `⌘⌥1`…`9` the session with that digit, `⌘⌥N` the session that has waited longest, `⌘⌥A` the sidebar, `⌘⌥T` the home page: composer (agent, checkout, worktree switch, task, `⌘⏎` starts), the sessions that need you, every session with its action buttons. The same buttons sit under the sidebar detail. Clicking a row brings its terminal to the front and shows its checkout as a second folder of the window, named `agtc · <checkout>`, replaced on every switch. The window's own first folder never changes: changing it would restart every extension and cut running agents off from the editor. `⇗` marks a session running outside this window.
 
 In the sidebar: `n` new agent in a checkout of the row's repo, `N` new agent in a new worktree, `W` move the running session into a new worktree (Claude does it through `EnterWorktree`; a Codex row gets a fresh Codex in the worktree with its last prompt), `R` resume a finished session, `t` the composer, `m` / `M` seen, `c` copy the resume command, `o` open the checkout in a new window, `a` show inactive.
 

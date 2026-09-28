@@ -14,8 +14,8 @@ const SWAP_WINDOW_MS = 60_000;
 
 /**
  * What ran in this window, for resume after a restart. VS Code has no window id that survives a
- * restart, so the list is keyed by the window's first folder: a window reopens with the folder it
- * had, and a folder swap moves its list along.
+ * restart, so the list is keyed by the window's first folder, which stays the same for the
+ * window's life.
  */
 export class WindowMemory {
   private last = "";
@@ -40,10 +40,9 @@ export class WindowMemory {
     return this.memento.update(KEY, rest).then(() => sessions);
   }
 
-  /** A folder swap restarts the extension host; the flag tells the next activation it is not a window start. */
-  move(from: string, to: string): Thenable<void> {
-    const { [from]: sessions = [], ...rest } = this.all();
-    return this.memento.update(SWAP_KEY, Date.now()).then(() => this.memento.update(KEY, { ...rest, [to]: sessions }));
+  /** Going from one folder to two restarts the extension host; the flag tells the next activation it is not a window start. */
+  willRestart(): Thenable<void> {
+    return this.memento.update(SWAP_KEY, Date.now());
   }
 
   afterSwap(): Thenable<boolean> {

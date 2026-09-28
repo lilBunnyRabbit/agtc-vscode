@@ -21,6 +21,7 @@ const say = (text: string): void => void window.setStatusBarMessage(`agtc: ${tex
 export async function startAgent(ctx: SpawnContext, tool: Tool, dir: string, taskPath?: string): Promise<void> {
   openAgentTerminal(dir, startCommand(tool, taskPath), await checkoutName(dir));
   say(`started ${tool} in ${tildify(dir, HOME)}`);
+  await ctx.openFolder(dir);
   setTimeout(() => void ctx.refresh(), 1500);
 }
 
