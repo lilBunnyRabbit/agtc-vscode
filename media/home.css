@@ -59,43 +59,59 @@ body.home {
 .toolbar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
 }
 
 .toolbar.end {
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: 14px;
 }
 
-.toolbar .in {
-  color: var(--dim);
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+  margin-top: 14px;
 }
 
-.toolbar select {
-  flex: 1 1 200px;
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   min-width: 0;
 }
 
-.toolbar .switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
+.fieldset.wide {
+  grid-column: 1 / -1;
+}
+
+.fieldset[hidden] {
+  display: none;
+}
+
+.legend {
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--dim);
-  white-space: nowrap;
 }
 
-.toolbar .switch input {
-  margin: 0;
+.picker {
+  display: flex;
+  gap: 6px;
 }
 
-#branch {
-  width: 150px;
+.picker select {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-#branch:disabled {
-  opacity: 0.4;
+.hint {
+  color: var(--dim);
+  font-size: 0.9em;
+  font-family: var(--vscode-editor-font-family, monospace);
+  overflow-wrap: anywhere;
 }
 
 .home input:not([type]),
@@ -113,9 +129,9 @@ body.home {
 .home textarea {
   display: block;
   width: 100%;
-  margin-top: 10px;
   resize: vertical;
-  min-height: 72px;
+  min-height: 88px;
+  padding: 8px 10px;
 }
 
 .home input:focus,
@@ -167,16 +183,29 @@ body.home {
 }
 
 .segment {
-  display: inline-flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 5px;
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, transparent));
+}
+
+.home .segment button {
+  background: transparent;
+  color: var(--dim);
   border-radius: 3px;
-  overflow: hidden;
+  padding: 4px 12px;
 }
 
-.segment button {
-  border-radius: 0;
+.home .segment button:hover {
+  color: var(--vscode-foreground);
+  background: transparent;
 }
 
-.segment button.on {
+.home .segment button.on {
   color: var(--vscode-button-foreground);
   background: var(--vscode-button-background);
 }
@@ -207,62 +236,102 @@ body.home {
   margin: 4px auto 0;
 }
 
-.need {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-rows: auto auto auto;
-  column-gap: 16px;
-  padding: 10px 14px;
-  margin-bottom: 8px;
-  border-left: 3px solid var(--status);
-  border-radius: 0 4px 4px 0;
+.session {
+  padding: 14px 16px 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
   background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
 }
 
-.need .title {
-  grid-column: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 500;
-}
-
-.need .meta {
-  grid-column: 1;
+.session header {
   display: flex;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+}
+
+.session .glyph {
+  color: var(--dim);
+}
+
+.session h3 {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.session .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 4px 0 0 22px;
   color: var(--dim);
   font-size: 0.92em;
 }
 
-.need .meta .pill {
-  color: var(--status);
+.session .meta .repo {
+  color: var(--vscode-foreground);
 }
 
-.need .prompt {
-  grid-column: 1;
+.said {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 8px;
+  margin: 10px 0 0 22px;
+}
+
+.said .who {
   color: var(--dim);
-  font-size: 0.92em;
-  white-space: nowrap;
+  font-size: 0.85em;
+  padding-top: 1px;
+}
+
+.said p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.need .actions {
-  grid-column: 2;
-  grid-row: 1 / span 3;
-  align-self: center;
+.said.you p {
+  color: var(--vscode-foreground);
+}
+
+.said:not(.you) p {
+  color: var(--dim);
+}
+
+.session.open .said p {
+  display: block;
+}
+
+.session footer {
   display: flex;
-  gap: 4px;
+  gap: 16px;
+  margin: 10px 0 0 22px;
 }
 
-.need .actions button {
-  padding: 2px 9px;
+.home button.link {
+  background: none;
+  padding: 0;
+  color: var(--vscode-textLink-foreground);
   font-size: 0.92em;
 }
 
-.need {
-  --status: var(--vscode-widget-border, var(--vscode-panel-border));
+.home button.link:hover {
+  background: none;
+  text-decoration: underline;
+}
+
+.home button.link.expand {
+  margin-left: auto;
+  color: var(--dim);
 }
 
 .cards {

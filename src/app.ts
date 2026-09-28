@@ -5,8 +5,9 @@ import { linkedTerminals } from "./link/terminals";
 import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
 import { collectSessions } from "./model/sessions";
 import { StateStore } from "./model/state-store";
-import { STATE_FILE } from "./paths";
-import { actionTable, buildDetail, buildGroups, buildStats, inactiveRows } from "./views/model";
+import { HOME, STATE_FILE } from "./paths";
+import { reviewerReport } from "./review/report";
+import { actionTable, buildDetail, buildGroups, buildStats, checkoutsOf, inactiveRows } from "./views/model";
 import { HomePanel } from "./views/home";
 import { SessionsPanel } from "./views/panel";
 import { type Remembered, WindowMemory } from "./spawn/memory";
@@ -23,6 +24,7 @@ export class App {
   readonly home: HomePanel;
   private readonly status = window.createStatusBarItem(StatusBarAlignment.Left, 50);
   private terminals = new Map<string, Terminal>();
+  private readonly replies = new Map<string, string | undefined>();
   private list: Session[] = [];
   private selectedId: string | undefined;
   private showInactive = false;
@@ -43,7 +45,7 @@ export class App {
         case "start":
           return void startFromComposer(this, message.input);
         case "browse":
-          return void window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false }).then((uris) => uris?.[0] && this.home.picked(uris[0].fsPath));
+          return void window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false }).then((uris) => uris?.[0] && this.home.picked(checkoutsOf([uris[0].fsPath], HOME)[0]));
         case "command":
           return void commands.executeCommand(message.command, message.id);
         case "ready":
@@ -146,6 +148,13 @@ export class App {
     return this.inWindow.filter((s) => !s.id.startsWith("pid-")).map((s) => ({ id: s.id, tool: s.tool, cwd: workDir(s), reviewOf: s.reviewOf }));
   }
 
+  /** A finished session's transcript no longer changes, so its last message is read once per last-activity time. */
+  private replyOf(session: Session): string | undefined {
+    const key = `${session.id}:${session.since}`;
+    if (!this.replies.has(key)) this.replies.set(key, reviewerReport(session));
+    return this.replies.get(key);
+  }
+
   private render(): void {
     const selected = this.selected;
     const actions = actionTable();
@@ -156,7 +165,12 @@ export class App {
       showInactive: this.showInactive,
       actions,
     });
-    this.home.set({ inactive: inactiveRows(this.list), stats: buildStats(this.list), checkouts: knownCheckouts(this.list), actions });
+    this.home.set({
+      inactive: inactiveRows(this.list, Date.now(), (s) => this.replyOf(s)),
+      stats: buildStats(this.list),
+      checkouts: checkoutsOf(knownCheckouts(this.list), HOME),
+      actions,
+    });
     this.showWaiting();
   }
 

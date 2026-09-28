@@ -19,8 +19,17 @@ export interface Row {
   waitingFor?: string;
   actions: Action[];
   repo: string;
+  worktreeName?: string;
   lastPrompt?: string;
+  /** The agent's last message, for finished sessions on the home page. */
+  reply?: string;
   search: string;
+}
+
+export interface Checkout {
+  dir: string;
+  path: string;
+  name: string;
 }
 
 export type Action = "jump" | "worktree" | "resume" | "new" | "newWorktree" | "copyResume" | "openFolder" | "markSeen";
@@ -104,7 +113,7 @@ export interface Stats {
 export interface HomeState {
   inactive: Row[];
   stats: Stats;
-  checkouts: string[];
+  checkouts: Checkout[];
   actions: ViewState["actions"];
 }
 
@@ -129,11 +138,20 @@ export function buildStats(sessions: Session[], now = Date.now()): Stats {
 }
 
 /** Finished sessions, the most recently active first. */
-export function inactiveRows(sessions: Session[], now = Date.now()): Row[] {
+export function inactiveRows(sessions: Session[], now = Date.now(), replyOf: (session: Session) => string | undefined = () => undefined): Row[] {
   return sessions
     .filter((s) => s.status === "inactive")
     .sort((a, b) => b.since - a.since)
-    .map((s) => rowOf(s, sessions, undefined, now));
+    .map((s) => {
+      const reply = replyOf(s);
+      return { ...rowOf(s, sessions, undefined, now), reply: reply ? truncateText(reply.trim(), REPLY_MAX) : undefined };
+    });
+}
+
+const truncateText = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+export function checkoutsOf(dirs: string[], home: string): Checkout[] {
+  return dirs.map((dir) => ({ dir, path: tildify(dir, home), name: dir.split("/").filter(Boolean).pop() ?? dir }));
 }
 
 export const actionTable = (): ViewState["actions"] =>
@@ -141,6 +159,8 @@ export const actionTable = (): ViewState["actions"] =>
 
 const MAX_DIGIT = 9;
 const PROMPT_WIDTH = 160;
+const PROMPT_MAX = 600;
+const REPLY_MAX = 900;
 
 export function digitsOf(sessions: Session[]): Map<string, number> {
   return new Map(
@@ -179,7 +199,8 @@ function rowOf(session: Session, group: Session[], digit: number | undefined, no
     waitingFor: session.waitingFor,
     actions: actionsOf(session),
     repo: session.repo,
-    lastPrompt: session.lastPrompt ? collapse(session.lastPrompt, PROMPT_WIDTH) : undefined,
+    worktreeName: session.worktree,
+    lastPrompt: session.lastPrompt ? collapse(session.lastPrompt, PROMPT_MAX) : undefined,
     search: session.searchText,
   };
 }

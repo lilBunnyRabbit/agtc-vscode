@@ -80,8 +80,9 @@ describe("home", () => {
       session({ id: "old", status: "inactive", since: NOW - 9000, searchText: "old thing" }),
       session({ id: "new", status: "inactive", since: NOW - 1000, lastPrompt: "fix the login" }),
       session({ id: "b", status: "busy" }),
-    ], NOW);
+    ], NOW, (s) => (s.id === "new" ? "  fixed, tests pass  " : undefined));
     expect(rows.map((r) => r.id)).toEqual(["new", "old"]);
+    expect(rows[0].reply).toBe("fixed, tests pass");
     expect(rows[0].lastPrompt).toBe("fix the login");
     expect(rows[1].search).toBe("old thing");
   });

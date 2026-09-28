@@ -4,24 +4,29 @@
   const $ = (id) => document.getElementById(id);
   let state = { inactive: [], stats: { today: {}, week: {}, running: 0, repos: [] }, checkouts: [], actions: {} };
   let tool = "claude";
+  let where = "here";
+  let picked;
+  const expanded = new Set();
   const PAGE = 15;
   let shown = PAGE;
 
   const esc = (text) => String(text ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
   function needHtml(row) {
-    const buttons = ["resume", "copyResume", "openFolder"]
-      .filter((a) => row.actions.includes(a))
-      .map((a) => `<button data-command="${esc(state.actions[a].command)}"${a === "resume" ? ' class="primary"' : ""}>${esc(state.actions[a].label)}</button>`)
-      .join("");
-    const meta = [`<span>${esc(row.repo)}</span>`, row.branch ? `<span>⎇ ${esc(row.branch)}</span>` : "", `<span>${esc(row.age)}</span>`].filter(Boolean);
-    const prompt = row.lastPrompt && row.lastPrompt !== row.title ? `<span class="prompt">${esc(row.lastPrompt)}</span>` : "";
-    return `<div class="need" data-id="${esc(row.id)}" data-status="${esc(row.status)}" title="${esc(row.lastPrompt || row.title)}">
-      <span class="title">${GLYPH[row.tool] || ""} ${esc(row.title)}</span>
-      <span class="meta">${meta.join("")}</span>
-      ${prompt}
-      <span class="actions">${buttons}</span>
-    </div>`;
+    const meta = [
+      `<span class="repo">${esc(row.repo)}</span>`,
+      row.branch ? `<span>⎇ ${esc(row.branch)}</span>` : "",
+      row.worktreeName ? `<span>worktree ${esc(row.worktreeName)}</span>` : "",
+      `<span>${esc(row.age)} ago</span>`,
+    ].filter(Boolean);
+    const prompt = row.lastPrompt ? `<div class="said you"><span class="who">you</span><p>${esc(row.lastPrompt)}</p></div>` : "";
+    const reply = row.reply ? `<div class="said"><span class="who">${esc(row.tool)}</span><p>${esc(row.reply)}</p></div>` : "";
+    return `<article class="session" data-id="${esc(row.id)}">
+      <header><span class="glyph">${GLYPH[row.tool] || ""}</span><h3>${esc(row.title)}</h3><button class="primary" data-command="${esc(state.actions.resume.command)}">Resume</button></header>
+      <div class="meta">${meta.join("")}</div>
+      ${prompt}${reply}
+      <footer><button class="link" data-command="${esc(state.actions.copyResume.command)}">copy command</button><button class="link" data-command="${esc(state.actions.openFolder.command)}">open checkout in new window</button><button class="link expand">show all</button></footer>
+    </article>`;
   }
 
   function filtered() {
@@ -33,6 +38,11 @@
     const { stats } = state;
     const rows = filtered();
     $("resume-list").innerHTML = rows.length ? rows.slice(0, shown).map(needHtml).join("") : '<div class="empty">No finished sessions match.</div>';
+    for (const el of $("resume-list").querySelectorAll(".session")) {
+      if (!expanded.has(el.getAttribute("data-id"))) continue;
+      el.classList.add("open");
+      el.querySelector(".expand").textContent = "show less";
+    }
     $("more").style.display = rows.length > shown ? "" : "none";
     $("more").textContent = `show more (${rows.length - shown} left)`;
     const waiting = stats.repos.reduce((n, r) => n + r.waiting, 0);
@@ -52,16 +62,32 @@
       : "";
     const dir = $("dir");
     const current = dir.value;
-    dir.innerHTML = state.checkouts.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
-    if (current && state.checkouts.includes(current)) dir.value = current;
+    const options = picked && !state.checkouts.some((c) => c.dir === picked.dir) ? [picked, ...state.checkouts] : state.checkouts;
+    dir.innerHTML = options.map((c) => `<option value="${esc(c.dir)}">${esc(c.name)}  ·  ${esc(c.path)}</option>`).join("");
+    if (current && options.some((c) => c.dir === current)) dir.value = current;
+    paths();
+  }
+
+  function paths() {
+    const dir = $("dir").value;
+    const checkout = state.checkouts.find((c) => c.dir === dir) || picked;
+    $("dir-path").textContent = checkout ? checkout.path : "";
+    const branch = $("branch").value.trim();
+    $("branch-path").textContent = branch && checkout ? `${checkout.path}/.claude/worktrees/${branch.replace(/\//g, "+")}` : "a worktree of the checkout's repository, on a new branch";
   }
 
   $("resume-list").addEventListener("click", (event) => {
-    const row = event.target.closest(".need");
-    if (!row) return;
-    const id = row.getAttribute("data-id");
+    const row = event.target.closest(".session");
     const button = event.target.closest("button");
-    vscode.postMessage({ type: "command", command: button ? button.getAttribute("data-command") : "agtc.jump", id });
+    if (!row || !button) return;
+    const id = row.getAttribute("data-id");
+    if (button.classList.contains("expand")) {
+      expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+      row.classList.toggle("open", expanded.has(id));
+      button.textContent = expanded.has(id) ? "show less" : "show all";
+      return;
+    }
+    vscode.postMessage({ type: "command", command: button.getAttribute("data-command"), id });
   });
 
   $("filter").addEventListener("input", () => {
@@ -81,16 +107,23 @@
     for (const b of $("tool").querySelectorAll("button")) b.classList.toggle("on", b === button);
   });
 
-  $("wt").addEventListener("change", () => {
-    $("branch").disabled = !$("wt").checked;
-    if ($("wt").checked) $("branch").focus();
+  $("where").addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    where = button.getAttribute("data-where");
+    for (const b of $("where").querySelectorAll("button")) b.classList.toggle("on", b === button);
+    $("branch-field").hidden = where !== "worktree";
+    if (where === "worktree") $("branch").focus();
   });
+
+  $("dir").addEventListener("change", paths);
+  $("branch").addEventListener("input", paths);
 
   $("browse").addEventListener("click", () => vscode.postMessage({ type: "browse" }));
 
   function start() {
-    const branch = $("wt").checked ? $("branch").value.trim() : "";
-    if ($("wt").checked && !branch) {
+    const branch = where === "worktree" ? $("branch").value.trim() : "";
+    if (where === "worktree" && !branch) {
       $("note").textContent = "branch name needed";
       $("branch").focus();
       return;
@@ -119,9 +152,10 @@
       state = message.state;
       render();
     } else if (message.type === "picked") {
-      const dir = $("dir");
-      if (![...dir.options].some((o) => o.value === message.dir)) dir.add(new Option(message.dir, message.dir), 0);
-      dir.value = message.dir;
+      picked = message.checkout;
+      render();
+      $("dir").value = picked.dir;
+      paths();
     } else if (message.type === "focus") {
       $("task").focus();
     }

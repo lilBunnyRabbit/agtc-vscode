@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { EventEmitter, Uri, ViewColumn, type Webview, type WebviewPanel, window } from "vscode";
 import type { ComposerInput } from "../spawn/flows";
-import type { HomeState } from "./model";
+import type { Checkout, HomeState } from "./model";
 
 export type HomeMessage = { type: "start"; input: ComposerInput } | { type: "browse" } | { type: "command"; command: string; id?: string } | { type: "ready" };
 
@@ -49,8 +49,8 @@ export class HomePanel {
     void this.panel?.webview.postMessage({ type: "state", state });
   }
 
-  picked(dir: string): void {
-    void this.panel?.webview.postMessage({ type: "picked", dir });
+  picked(checkout: Checkout): void {
+    void this.panel?.webview.postMessage({ type: "picked", checkout });
   }
 
   dispose(): void {
@@ -72,15 +72,27 @@ export class HomePanel {
 <div class="page">
 <header><span class="logo">✳</span><h1>Agent Traffic Control</h1><span id="summary"></span></header>
 <section id="composer" class="card">
-  <div class="toolbar">
-    <div class="segment" id="tool"><button data-tool="claude" class="on">✳ Claude</button><button data-tool="codex">⬡ Codex</button></div>
-    <span class="in">in</span>
-    <select id="dir"></select>
-    <button id="browse" class="ghost" title="pick a folder">…</button>
-    <label class="switch"><input type="checkbox" id="wt"> new worktree</label>
-    <input id="branch" placeholder="branch" disabled>
+  <textarea id="task" rows="4" placeholder="What should the agent do? Leave empty to start without a task."></textarea>
+  <div class="fields">
+    <div class="fieldset">
+      <span class="legend">Agent</span>
+      <div class="segment" id="tool"><button data-tool="claude" class="on">✳ Claude</button><button data-tool="codex">⬡ Codex</button></div>
+    </div>
+    <div class="fieldset">
+      <span class="legend">Runs in</span>
+      <div class="segment" id="where"><button data-where="here" class="on">the checkout</button><button data-where="worktree">a new worktree</button></div>
+    </div>
+    <div class="fieldset wide">
+      <span class="legend">Checkout</span>
+      <div class="picker"><select id="dir"></select><button id="browse">Browse…</button></div>
+      <div id="dir-path" class="hint"></div>
+    </div>
+    <div class="fieldset wide" id="branch-field" hidden>
+      <span class="legend">Branch</span>
+      <input id="branch" placeholder="feat/short-name">
+      <div id="branch-path" class="hint"></div>
+    </div>
   </div>
-  <textarea id="task" rows="4" placeholder="What should it do? Empty starts the agent with no task."></textarea>
   <div class="toolbar end"><span id="note"></span><button id="start" class="primary">Start <kbd>⌘⏎</kbd></button></div>
 </section>
 <section id="resume"><div class="section-head"><h2>Resume</h2><input id="filter" placeholder="filter by name, prompt, repo or branch"></div><div id="resume-list"></div><button id="more" class="ghost">show more</button></section>
