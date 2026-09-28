@@ -56,7 +56,7 @@
       `<span class="pill">${esc(row.status)}</span>`,
       verdict,
       row.branch ? `<span class="branch">${esc(row.branch)}</span>` : "",
-      row.external ? `<span class="external" title="runs outside this window">⇗</span>` : "",
+      row.external ? `<span class="external" title="runs outside tmux">⇗</span>` : "",
     ].filter(Boolean);
     const tooltip = [row.title, row.waitingFor ? `waiting for: ${row.waitingFor}` : "", row.verdict ? `verdict: ${row.verdict.text}` : ""].filter(Boolean).join("\n");
     return `<div class="${classes.join(" ")}" data-id="${esc(row.id)}" data-status="${esc(row.status)}" title="${esc(tooltip)}">

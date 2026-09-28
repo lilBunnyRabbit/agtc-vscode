@@ -1,18 +1,19 @@
 import { existsSync } from "node:fs";
-import { type Terminal, window, workspace } from "vscode";
+import { window, workspace } from "vscode";
 import { collapse, tildify, untildify } from "../lib/text";
 import { type Session, type Tool, TOOLS, resumeInvocation, workDir } from "../model/session";
 import { HOME } from "../paths";
 import { baseBranch, checkoutName, createWorktree } from "../sources/git";
+import { sendLine } from "../tmux/tmux";
 import { attach, withAttachments } from "./attachments";
 import { DEFAULT_WORKTREES_DIR, enterWorktreeRequest, startCommand, worktreeDir, writeTask } from "./task";
 
 export interface SpawnContext {
   sessions: Session[];
-  terminalOf(session: Session): Terminal | undefined;
   refresh(): Promise<void>;
-  /** Undefined when the window restarts first; the agent then starts after the restart. */
-  launch(dir: string, command: string, name: string, beside?: Terminal): Promise<Terminal | undefined>;
+  /** The new pane; undefined when the window restarts first and the agent starts after the restart, or when tmux failed. */
+  launch(dir: string, command: string, name: string, beside?: string): Promise<string | undefined>;
+  show(pane: string): Promise<boolean>;
 }
 
 const say = (text: string): void => void window.setStatusBarMessage(`agtc: ${text}`, 4000);
@@ -51,13 +52,12 @@ export async function moveToWorktree(ctx: SpawnContext, session: Session): Promi
   if (session.status === "inactive") return say("not running: R resumes it first");
   if (!session.mainRoot) return say("not a git checkout");
   if (session.worktree) return say(`already in worktree ${session.worktree}`);
-  const terminal = ctx.terminalOf(session);
-  if (session.tool === "claude" && !terminal) return say("runs outside this window");
+  if (session.tool === "claude" && !session.pane) return say("runs outside tmux: bring it here first");
   const branch = await askBranch();
   if (!branch) return;
-  if (session.tool === "claude") {
-    terminal!.sendText(enterWorktreeRequest(branch));
-    terminal!.show();
+  if (session.tool === "claude" && session.pane) {
+    await sendLine(session.pane, enterWorktreeRequest(branch));
+    await ctx.show(session.pane);
     return;
   }
   const dir = await createWorktreeFor(session.mainRoot, branch);

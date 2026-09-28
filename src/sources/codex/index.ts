@@ -54,7 +54,7 @@ function liveSession(proc: CodexProcess, thread: CodexThread, git: GitInfo, info
     since: rollout.at,
     startedAt: info?.startedAt,
     tty,
-    terminal: tty ? surfaces.get(tty)?.terminal : undefined,
+    pane: tty ? surfaces.get(tty)?.pane : undefined,
     subagents: spawnedAgents(thread.id),
   };
 }
@@ -90,7 +90,7 @@ function freshSession(proc: CodexProcess, git: GitInfo, info: ProcessInfo | unde
     since: info?.startedAt ?? Date.now(),
     startedAt: info?.startedAt,
     tty,
-    terminal: surface?.terminal,
+    pane: surface?.pane,
   };
 }
 

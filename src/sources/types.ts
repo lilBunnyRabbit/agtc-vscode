@@ -1,7 +1,8 @@
 export interface Surface {
   title: string;
   viewed: boolean;
-  terminal?: string;
+  /** The tmux pane id, for a process that runs in tmux. */
+  pane?: string;
 }
 
 /** Keyed by tty name (`ttys004`), the one thing a process and a terminal have in common. */

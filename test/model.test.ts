@@ -7,7 +7,7 @@ const NOW = 10_000_000;
 describe("buildGroups", () => {
   test("groups by repo in list order, inactive hidden unless asked", () => {
     const sessions = [
-      session({ repo: "a", id: "a1", status: "busy", terminal: "t1", since: NOW - 5000 }),
+      session({ repo: "a", id: "a1", status: "busy", pane: "%1", since: NOW - 5000 }),
       session({ repo: "a", id: "a2", status: "inactive" }),
       session({ repo: "b", id: "b1", status: "done" }),
     ];
@@ -20,9 +20,9 @@ describe("buildGroups", () => {
 
   test("digits go to sessions in this window, external ones are marked", () => {
     const sessions = [
-      session({ id: "ours", status: "idle", terminal: "t1" }),
+      session({ id: "ours", status: "idle", pane: "%1" }),
       session({ id: "theirs", status: "idle" }),
-      session({ id: "old", status: "inactive", terminal: "t2" }),
+      session({ id: "old", status: "inactive", pane: "%2" }),
     ];
     expect([...digitsOf(sessions)]).toEqual([["ours", 1]]);
     const rows = buildGroups(sessions, true, NOW)[0].rows;
@@ -65,18 +65,18 @@ describe("buildDetail", () => {
 
 describe("actionsOf", () => {
   test("running here can move to a worktree, finished can resume, external claude cannot move", () => {
-    expect(actionsOf(session({ status: "busy", terminal: "t1" }))).toContain("worktree");
+    expect(actionsOf(session({ status: "busy", pane: "%1" }))).toContain("worktree");
     expect(actionsOf(session({ status: "busy" }))).not.toContain("worktree");
     expect(actionsOf(session({ status: "busy", tool: "codex" }))).toContain("worktree");
-    expect(actionsOf(session({ status: "busy", terminal: "t1", worktree: "x" }))).not.toContain("worktree");
+    expect(actionsOf(session({ status: "busy", pane: "%1", worktree: "x" }))).not.toContain("worktree");
     expect(actionsOf(session({ status: "inactive" }))).toContain("resume");
-    expect(actionsOf(session({ status: "done", terminal: "t1" }))).toContain("markSeen");
+    expect(actionsOf(session({ status: "done", pane: "%1" }))).toContain("markSeen");
     expect(actionsOf(session({ status: "idle" }))).toContain("review");
-    const reviewer = actionsOf(session({ status: "done", terminal: "t1", reviewOf: "s" }));
+    const reviewer = actionsOf(session({ status: "done", pane: "%1", reviewOf: "s" }));
     expect(reviewer).toContain("handBack");
     expect(reviewer).toContain("closeReviewer");
     expect(reviewer).not.toContain("review");
-    expect(actionsOf(session({ status: "busy", terminal: "t1", reviewOf: "s" }))).not.toContain("handBack");
+    expect(actionsOf(session({ status: "busy", pane: "%1", reviewOf: "s" }))).not.toContain("handBack");
   });
 });
 

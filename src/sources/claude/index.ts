@@ -100,7 +100,7 @@ function liveSession(
     since: statusAt,
     startedAt: registration.startedAt,
     tty,
-    terminal: surface?.terminal,
+    pane: surface?.pane,
     subagents: claudeSubagents(registration.sessionId, registration.cwd),
   };
 }

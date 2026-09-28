@@ -41,7 +41,8 @@ export interface SessionInput {
   /** Live sessions only; fixes their place in the list. */
   startedAt?: number;
   tty?: string;
-  terminal?: string;
+  /** The tmux pane the session runs in; without one it runs in some other app. */
+  pane?: string;
   viewed?: boolean;
   reviewOf?: string;
   /** What a finished reviewer concluded, from the `## Verdict` section of its report. */

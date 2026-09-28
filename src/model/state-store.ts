@@ -3,11 +3,11 @@ import { dirname } from "node:path";
 import { readJson } from "../lib/files";
 
 export interface ReviewLink {
-  /** Known up front for Claude, learned from its terminal for Codex. */
+  /** Known up front for Claude, learned from its pane for Codex. */
   id?: string;
-  terminal: string;
+  pane: string;
   of: string;
-  /** When the reviewer started; a session in that terminal from before is not it. */
+  /** When the reviewer started; a session in that pane from before is not it. */
   at: number;
 }
 
@@ -63,18 +63,18 @@ export class StateStore {
     this.save();
   }
 
-  /** A link still waiting for its id in the same terminal is stale: the terminal was reused. */
+  /** A link still waiting for its id in the same pane is stale: the pane was reused. */
   rememberReview(link: ReviewLink): void {
-    this.reviews = [...this.reviews.filter((r) => r.id || r.terminal !== link.terminal), link].slice(-MAX_REVIEWS);
+    this.reviews = [...this.reviews.filter((r) => r.id || r.pane !== link.pane), link].slice(-MAX_REVIEWS);
     this.save();
   }
 
-  /** A terminal match settles the id, except for a Codex process whose id is a placeholder until its first message. */
-  reviewLinkOf(session: { id: string; terminal?: string; startedAt?: number }): ReviewLink | undefined {
+  /** A pane match settles the id, except for a Codex process whose id is a placeholder until its first message. */
+  reviewLinkOf(session: { id: string; pane?: string; startedAt?: number }): ReviewLink | undefined {
     const byId = this.reviews.find((r) => r.id === session.id);
     if (byId) return byId;
-    if (!session.terminal) return undefined;
-    const link = this.reviews.find((r) => !r.id && r.terminal === session.terminal && (session.startedAt ?? Infinity) >= r.at - START_SLACK_MS);
+    if (!session.pane) return undefined;
+    const link = this.reviews.find((r) => !r.id && r.pane === session.pane && (session.startedAt ?? Infinity) >= r.at - START_SLACK_MS);
     if (link && !session.id.startsWith("pid-")) {
       link.id = session.id;
       this.save();

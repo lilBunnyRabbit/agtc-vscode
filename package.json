@@ -331,11 +331,6 @@
           "default": 7,
           "description": "How many days back inactive sessions are listed."
         },
-        "agtc.resumeOnStartup": {
-          "type": "boolean",
-          "default": true,
-          "description": "Resume the agents that ran in this window when it reopens."
-        },
         "agtc.terminalLocation": {
           "type": "string",
           "enum": [
@@ -343,7 +338,7 @@
             "editor"
           ],
           "default": "panel",
-          "description": "Where new agent terminals open."
+          "description": "Where the window's agents terminal opens."
         },
         "agtc.baseBranch": {
           "type": "string",

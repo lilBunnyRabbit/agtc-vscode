@@ -1,5 +1,7 @@
 # agtc-vscode
 
+> Superseded in two places on 2026-09-28. Agents run in tmux, not in VS Code terminals: a session tied to the editor died with it and the terminal list grew with every agent. The window never swaps its first folder: that restarts every extension and cuts agents off from the editor; a placeholder stays first and the session's checkout is the second folder. README has the current behaviour.
+
 Plan for the VS Code extension. Written 2026-09-28 from the decisions below, so the build can start
 cold in a new repo. References: this repo (session model, sources, review loop, worktrees) and
 [agent-deck](https://github.com/anzemur/agent-deck) (terminal linking, folder switching, restart

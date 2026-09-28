@@ -1,8 +1,8 @@
-import { type Memento, type OutputChannel, StatusBarAlignment, type Terminal, Uri, commands, env, window, workspace } from "vscode";
-import { type Switch, currentFolder, editorKnows, needsPin, openFolderHere } from "./folder";
-import { openAgentTerminal } from "./spawn/terminal";
+import { type Memento, type OutputChannel, StatusBarAlignment, Uri, commands, env, window, workspace } from "vscode";
+import { type Switch, editorEnv, editorKnows, needsPin, openFolderHere } from "./folder";
 import { SECOND } from "./lib/time";
-import { linkedTerminals } from "./link/terminals";
+import { newWindow, splitPane, tmuxPanes } from "./tmux/tmux";
+import { Viewer } from "./tmux/viewer";
 import { type Session, STATUS_PRIORITY, workDir } from "./model/session";
 import { collectSessions } from "./model/sessions";
 import { StateStore } from "./model/state-store";
@@ -19,8 +19,7 @@ import { type Worktree, isRemovable } from "./worktrees/state";
 import { actionTable, buildDetail, buildGroups, buildStats, checkoutsOf, inactiveRows } from "./views/model";
 import { HomePanel } from "./views/home";
 import { SessionsPanel } from "./views/panel";
-import { type Remembered, WindowMemory } from "./spawn/memory";
-import { restoreSessions } from "./spawn/restore";
+import { type Launch, WindowMemory } from "./spawn/memory";
 import { knownCheckouts, startFromComposer } from "./spawn/flows";
 
 const POLL_VISIBLE_MS = 2 * SECOND;
@@ -33,7 +32,7 @@ export class App {
   readonly memory: WindowMemory;
   readonly home: HomePanel;
   private readonly status = window.createStatusBarItem(StatusBarAlignment.Left, 50);
-  private terminals = new Map<string, Terminal>();
+  private readonly viewer = new Viewer();
   private readonly replies = new Map<string, string | undefined>();
   readonly threads = new ReviewThreads();
   private readonly worktrees = new Map<string, { at: number; byDir: Map<string, Worktree> }>();
@@ -88,10 +87,6 @@ export class App {
           return void commands.executeCommand(message.command, message.id);
       }
     });
-    window.onDidChangeActiveTerminal((terminal) => {
-      const session = terminal && this.sessionInTerminal(terminal);
-      if (session) this.select(session.id, true);
-    });
     void this.start();
   }
 
@@ -101,18 +96,8 @@ export class App {
     const afterSwap = await this.memory.afterSwap();
     if (!afterSwap && config.get<boolean>("showOnStartup", true)) this.home.show(true);
     const deferred = await this.memory.takeDeferred();
-    if (deferred && existsSync(deferred.dir)) {
-      await editorKnows(deferred.dir);
-      openAgentTerminal(deferred.dir, deferred.command, deferred.name);
-    }
-    const remembered = await this.memory.take(currentFolder());
-    if (remembered.length && config.get<boolean>("resumeOnStartup", true)) {
-      const opened = await restoreSessions(remembered, this.list);
-      if (opened) {
-        window.setStatusBarMessage(`agtc: resumed ${opened} ${opened === 1 ? "agent" : "agents"}`, 5 * SECOND);
-        await this.refresh();
-      }
-    }
+    if (deferred && existsSync(deferred.dir)) await this.begin(deferred);
+    void this.viewer.sweep();
     this.schedule();
   }
 
@@ -140,24 +125,20 @@ export class App {
     return id ? this.byId(id) : this.selected;
   }
 
-  get inWindow(): Session[] {
-    return this.list.filter((s) => s.terminal && s.status !== "inactive");
+  /** Sessions the window's terminal can show. */
+  get reachable(): Session[] {
+    return this.list.filter((s) => s.pane && s.status !== "inactive");
   }
 
-  sessionInTerminal(terminal: Terminal): Session | undefined {
-    for (const [id, t] of this.terminals) if (t === terminal) return this.list.find((s) => s.terminal === id);
-    return undefined;
-  }
-
-  terminalOf(session: Session): Terminal | undefined {
-    return session.terminal ? this.terminals.get(session.terminal) : undefined;
+  show(pane: string): Promise<boolean> {
+    return this.viewer.show(pane);
   }
 
   async refresh(): Promise<void> {
     try {
       const days = workspace.getConfiguration("agtc").get<number>("days", 7);
-      const { surfaces, byId } = await linkedTerminals();
-      this.terminals = byId;
+      const viewerTty = await this.viewer.clientTty();
+      const surfaces = await tmuxPanes(new Map(viewerTty ? [[viewerTty, this.viewer.active]] : []));
       this.list = await collectSessions({ days, state: this.state, surfaces });
       this.render();
       this.threads.sync(this.list);
@@ -165,15 +146,9 @@ export class App {
         const session = this.byId(id);
         if (session) void this.jump(session);
       });
-      await this.memory.remember(currentFolder(), this.remembered());
     } catch (error) {
       this.output.appendLine(`refresh failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
     }
-  }
-
-  /** Codex ids stay placeholders until the first message; nothing to resume there yet. */
-  private remembered(): Remembered[] {
-    return this.inWindow.filter((s) => !s.id.startsWith("pid-")).map((s) => ({ id: s.id, tool: s.tool, cwd: s.cwd, reviewOf: s.reviewOf }));
   }
 
   /** Reading a repo's worktrees runs git in each; done for the selected session's repo only, at most once a minute, off the render path. */
@@ -260,48 +235,55 @@ export class App {
 
   async jump(session: Session): Promise<void> {
     this.select(session.id, true);
-    const terminal = this.terminalOf(session);
-    if (terminal) terminal.show();
-    else if (session.status !== "inactive") window.setStatusBarMessage(`${session.title}: runs outside this window`, 3 * SECOND);
+    if (session.pane) await this.viewer.show(session.pane);
+    else if (session.status !== "inactive") window.setStatusBarMessage(`${session.title}: runs outside tmux, "bring here" moves it in`, 4 * SECOND);
     this.state.mark(session.id);
     if ((await this.openFolder(workDir(session))) === "same") await this.refresh();
   }
 
   openFolder(dir: string): Promise<Switch> {
-    return openFolderHere(dir, (from, to) => this.memory.move(from, to));
+    return openFolderHere(dir, () => this.memory.willRestart());
   }
 
   /**
-   * An agent in a terminal, in a window that shows its checkout. The window switches first and
-   * the editor's lock has to name the checkout before the agent starts, or it comes up without
-   * the editor. A window's first switch restarts the extension host: the launch is kept and runs
-   * after the restart.
+   * An agent in a tmux window, in an editor window that shows its checkout. The editor switches
+   * first and its lock has to name the checkout before the agent starts, or the agent comes up
+   * without the editor. A window's first switch restarts the extension host: the launch is kept
+   * and runs after the restart.
    */
-  async launch(dir: string, command: string, name: string, beside?: Terminal): Promise<Terminal | undefined> {
+  async launch(dir: string, command: string, name: string, beside?: string): Promise<string | undefined> {
     if (needsPin()) {
       await this.memory.defer({ dir, command, name });
       await this.openFolder(dir);
       return undefined;
     }
     await this.openFolder(dir);
+    return this.begin({ dir, command, name }, beside);
+  }
+
+  private async begin({ dir, command, name }: Launch, beside?: string): Promise<string | undefined> {
     await editorKnows(dir);
-    const terminal = openAgentTerminal(dir, command, name, beside);
+    const line = command.startsWith("claude") ? `${editorEnv(dir)}${command}` : command;
+    const pane = beside ? await splitPane(beside, dir, line) : await newWindow(dir, line, name);
+    if (!pane) {
+      void window.showErrorMessage(`agtc: could not open a tmux ${beside ? "pane" : "window"} in ${dir}`);
+      return undefined;
+    }
+    await this.viewer.show(pane);
     setTimeout(() => void this.refresh(), 1500);
-    return terminal;
+    return pane;
   }
 
   jumpDigit(digit: number): Promise<void> | undefined {
-    const session = this.inWindow[digit - 1];
+    const session = this.reachable[digit - 1];
     return session ? this.jump(session) : undefined;
   }
 
-  /** J/K: the running session after or before the current one, wrapping; the current one is the active terminal's, else the selection. */
+  /** J/K: the running session after or before the selected one, wrapping. */
   jumpNext(direction: 1 | -1): Promise<void> | undefined {
-    const running = this.inWindow;
+    const running = this.reachable;
     if (!running.length) return undefined;
-    const active = window.activeTerminal && this.sessionInTerminal(window.activeTerminal);
-    const currentId = active?.id ?? this.selectedId;
-    const index = running.findIndex((s) => s.id === currentId);
+    const index = running.findIndex((s) => s.id === this.selectedId);
     const next = index < 0 ? (direction > 0 ? 0 : running.length - 1) : (index + direction + running.length) % running.length;
     return this.jump(running[next]);
   }

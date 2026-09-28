@@ -87,13 +87,13 @@ export const ACTION_KIND: Record<Action, ActionKind> = {
 export function actionsOf(session: Session): Action[] {
   const inactive = session.status === "inactive";
   const actions: Action[] = inactive ? [] : ["jump"];
-  if (!inactive && !session.terminal && session.pid && !session.id.startsWith("pid-")) actions.push("bringHere");
+  if (!inactive && !session.pane && session.pid && !session.id.startsWith("pid-")) actions.push("bringHere");
   if (session.reviewOf) {
     if (!inactive && session.status !== "busy") actions.push("handBack");
-    if (!inactive && session.terminal) actions.push("closeReviewer");
+    if (!inactive && session.pane) actions.push("closeReviewer");
   } else if (session.root) actions.push("review");
   if (inactive) actions.push("resume");
-  else if (session.mainRoot && !session.worktree && (session.terminal || session.tool === "codex")) actions.push("worktree");
+  else if (session.mainRoot && !session.worktree && (session.pane || session.tool === "codex")) actions.push("worktree");
   if (!inactive && (session.status === "needs input" || session.status === "done")) actions.push("markSeen");
   actions.push("new", "newWorktree", "copyResume", "openFolder");
   if (session.mainRoot) actions.push("cleanWorktrees");
@@ -203,7 +203,7 @@ const REPLY_MAX = 900;
 export function digitsOf(sessions: Session[]): Map<string, number> {
   return new Map(
     sessions
-      .filter((s) => s.terminal && s.status !== "inactive")
+      .filter((s) => s.pane && s.status !== "inactive")
       .slice(0, MAX_DIGIT)
       .map((s, i) => [s.id, i + 1]),
   );
@@ -232,7 +232,7 @@ function rowOf(session: Session, group: Session[], digit: number | undefined, no
     age: relativeAge(session.since, now),
     branch: session.branch,
     verdict: session.verdict,
-    external: !session.terminal && session.status !== "inactive",
+    external: !session.pane && session.status !== "inactive",
     review: !!session.reviewOf && group.some((s) => s.id === session.reviewOf),
     waitingFor: session.waitingFor,
     actions: actionsOf(session),

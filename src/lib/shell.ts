@@ -41,3 +41,13 @@ export function isProcessAlive(pid: number): boolean {
 }
 
 export const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+
+/** Runs a command with `input` on its stdin. */
+export function feed(argv: string[], input: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const child = spawn(argv[0], argv.slice(1), { stdio: ["pipe", "ignore", "ignore"] });
+    child.on("error", () => resolve(false));
+    child.on("close", (code) => resolve(code === 0));
+    child.stdin.end(input);
+  });
+}

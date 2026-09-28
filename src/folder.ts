@@ -4,8 +4,6 @@ import { basename, dirname, join, sep } from "node:path";
 import { Uri, workspace } from "vscode";
 import { CLAUDE_DIR, WINDOWS_DIR } from "./paths";
 
-export const currentFolder = (): string => workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
-
 const isPin = (dir: string) => dirname(dir) === WINDOWS_DIR;
 const inside = (dir: string, root: string) => dir === root || dir.startsWith(root + sep);
 
@@ -22,10 +20,10 @@ export function needsPin(): boolean {
  * second, so quick open, search, Explorer and source control see that checkout alone. Changing
  * the first folder restarts every extension, and the Claude Code extension then takes a new
  * port, which cuts every running agent off from the editor; replacing the second does not.
- * The placeholder is a directory of its own per window, which also tells windows apart after a
- * restart. Putting it in restarts once; `willRestart` runs before that.
+ * The placeholder is a directory of its own per window. Putting it in restarts once;
+ * `willRestart` runs before that.
  */
-export async function openFolderHere(dir: string, willRestart: (from: string, to: string) => Thenable<void>): Promise<Switch> {
+export async function openFolderHere(dir: string, willRestart: () => Thenable<void>): Promise<Switch> {
   const folders = workspace.workspaceFolders ?? [];
   const entry = { uri: Uri.file(dir), name: basename(dir) };
   if (!needsPin()) {
@@ -43,7 +41,7 @@ export async function openFolderHere(dir: string, willRestart: (from: string, to
   }
   const pin = join(WINDOWS_DIR, randomUUID().slice(0, 8));
   mkdirSync(pin, { recursive: true });
-  await willRestart(currentFolder(), pin);
+  await willRestart();
   workspace.updateWorkspaceFolders(0, folders.length, { uri: Uri.file(pin), name: "agtc" }, entry);
   return "restarting";
 }
@@ -67,15 +65,27 @@ export async function editorKnows(dir: string): Promise<boolean> {
   return false;
 }
 
-function locks(): string[][] {
+/**
+ * What the Claude Code extension sets in the editor's own terminals, for an agent that starts in
+ * tmux instead: without it Claude does not look for an editor by itself. The port is this
+ * editor's until its extensions restart; `/ide` in the agent reconnects after that.
+ */
+export function editorEnv(dir: string): string {
+  const port = ports().find(({ folders }) => folders.some((folder) => inside(dir, folder)))?.port;
+  return port ? `CLAUDE_CODE_SSE_PORT=${port} ENABLE_IDE_INTEGRATION=true ` : "";
+}
+
+const locks = (): string[][] => ports().map(({ folders }) => folders);
+
+function ports(): { port: string; folders: string[] }[] {
   try {
     return readdirSync(IDE_DIR)
       .filter((file) => file.endsWith(".lock"))
       .map((file) => {
         try {
-          return (JSON.parse(readFileSync(join(IDE_DIR, file), "utf8")) as { workspaceFolders?: string[] }).workspaceFolders ?? [];
+          return { port: basename(file, ".lock"), folders: (JSON.parse(readFileSync(join(IDE_DIR, file), "utf8")) as { workspaceFolders?: string[] }).workspaceFolders ?? [] };
         } catch {
-          return [];
+          return { port: "", folders: [] };
         }
       });
   } catch {
